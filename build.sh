@@ -11,7 +11,7 @@ pushd wasm/
 
 $CARGO_CMD build --target=wasm32-unknown-unknown --release
 
-for i in joystream_node_runtime_wasm
+for i in subsocial_runtime_wasm
 do
 	wasm-gc target/wasm32-unknown-unknown/release/$i.wasm target/wasm32-unknown-unknown/release/$i.compact.wasm
 done

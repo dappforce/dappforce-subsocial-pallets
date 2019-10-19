@@ -15,17 +15,8 @@ use substrate_client as client;
 extern crate parity_codec_derive;
 
 pub mod currency;
-pub mod governance;
 pub mod social;
-use governance::{council, election, proposals};
-pub mod storage;
-use storage::{data_directory, data_object_storage_registry, data_object_type_registry, downloads};
-mod membership;
-mod memo;
-mod traits;
-use membership::members;
 mod migration;
-mod roles;
 use social::blogs;
 use client::{
     block_builder::api::{self as block_builder_api, CheckInherentsResult, InherentData},
@@ -35,7 +26,6 @@ use grandpa::fg_primitives::{self, ScheduledChange};
 #[cfg(feature = "std")]
 use primitives::bytes;
 use primitives::{ed25519, OpaqueMetadata};
-use roles::actors;
 use rstd::prelude::*; // needed for Vec
 use runtime_primitives::{
     create_runtime_str, generic,
@@ -124,8 +114,8 @@ pub mod opaque {
 
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-    spec_name: create_runtime_str!("joystream-node"),
-    impl_name: create_runtime_str!("joystream-node"),
+    spec_name: create_runtime_str!("subsocial-node"),
+    impl_name: create_runtime_str!("subsocial-node"),
     authoring_version: 5,
     spec_version: 2,
     impl_version: 0,
@@ -238,62 +228,6 @@ impl currency::GovernanceCurrency for Runtime {
     type Currency = balances::Module<Self>;
 }
 
-impl governance::proposals::Trait for Runtime {
-    type Event = Event;
-    type Members = Members;
-}
-
-impl governance::election::Trait for Runtime {
-    type Event = Event;
-    type CouncilElected = (Council,);
-    type Members = Members;
-}
-
-impl governance::council::Trait for Runtime {
-    type Event = Event;
-    type CouncilTermEnded = (CouncilElection,);
-}
-
-impl memo::Trait for Runtime {
-    type Event = Event;
-}
-
-impl storage::data_object_type_registry::Trait for Runtime {
-    type Event = Event;
-    type DataObjectTypeId = u64;
-}
-
-impl storage::data_directory::Trait for Runtime {
-    type Event = Event;
-    type ContentId = ContentId;
-    type SchemaId = u64;
-    type Members = Members;
-    type Roles = Actors;
-    type IsActiveDataObjectType = DataObjectTypeRegistry;
-}
-
-impl storage::downloads::Trait for Runtime {
-    type Event = Event;
-    type DownloadSessionId = u64;
-    type ContentHasStorage = DataObjectStorageRegistry;
-}
-
-impl storage::data_object_storage_registry::Trait for Runtime {
-    type Event = Event;
-    type DataObjectStorageRelationshipId = u64;
-    type Members = Members;
-    type Roles = Actors;
-    type ContentIdExists = DataDirectory;
-}
-
-impl members::Trait for Runtime {
-    type Event = Event;
-    type MemberId = u64;
-    type PaidTermId = u64;
-    type SubscriptionId = u64;
-    type Roles = Actors;
-}
-
 impl blogs::Trait for Runtime {
     type Event = Event;
     type BlogId = u64;
@@ -304,11 +238,6 @@ impl blogs::Trait for Runtime {
 
 impl migration::Trait for Runtime {
     type Event = Event;
-}
-
-impl actors::Trait for Runtime {
-    type Event = Event;
-    type Members = Members;
 }
 
 impl grandpa::Trait for Runtime {
@@ -338,18 +267,8 @@ construct_runtime!(
 		Sudo: sudo,
         FinalityTracker: finality_tracker::{Module, Call, Inherent},
 		Grandpa: grandpa::{Module, Call, Storage, Config<T>, Log(), Event<T>},
-		Proposals: proposals::{Module, Call, Storage, Event<T>, Config<T>},
-		CouncilElection: election::{Module, Call, Storage, Event<T>, Config<T>},
-		Council: council::{Module, Call, Storage, Event<T>, Config<T>},
-		Memo: memo::{Module, Call, Storage, Event<T>},
-		Members: members::{Module, Call, Storage, Event<T>, Config<T>},
         Blogs: blogs::{Module, Call, Storage, Event<T>},
 		Migration: migration::{Module, Call, Storage, Event<T>},
-		Actors: actors::{Module, Call, Storage, Event<T>, Config<T>},
-		DataObjectTypeRegistry: data_object_type_registry::{Module, Call, Storage, Event<T>, Config<T>},
-		DataDirectory: data_directory::{Module, Call, Storage, Event<T>},
-		DataObjectStorageRegistry: data_object_storage_registry::{Module, Call, Storage, Event<T>, Config<T>},
-		DownloadSessions: downloads::{Module, Call, Storage, Event<T>, Config<T>},
 	}
 );
 

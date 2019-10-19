@@ -1,5 +1,3 @@
-use crate::membership::members;
-use crate::roles::actors;
 use crate::VERSION;
 use runtime_io::print;
 use srml_support::{decl_event, decl_module, decl_storage, StorageValue};
@@ -31,7 +29,7 @@ impl<T: Trait> Module<T> {
     }
 }
 
-pub trait Trait: system::Trait + members::Trait + actors::Trait {
+pub trait Trait: system::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
 

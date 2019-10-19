@@ -10,14 +10,14 @@ crate-type = ['cdylib']
 
 [features]
 default = []
-std = ['joystream-node-runtime/std']
+std = ['subsocial-runtime/std']
 
-[dependencies.joystream-node-runtime]
+[dependencies.subsocial-runtime]
 default-features = false
 path = '..'
 
 [package]
-authors = ['Joystream']
+authors = ['Dappforce']
 edition = '2018'
-name = 'joystream-node-runtime-wasm'
+name = 'subsocial-runtime-wasm'
 version = '5.2.0'
