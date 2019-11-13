@@ -1,3 +1,4 @@
+use super::defaults::*;
 use super::messages::*;
 
 use rstd::prelude::*;
@@ -7,28 +8,6 @@ use srml_support::{StorageMap, StorageValue, decl_module, decl_storage, decl_eve
 use runtime_primitives::traits::{SimpleArithmetic, As, Member, MaybeDebug, MaybeSerializeDebug};
 use system::{self, ensure_signed};
 use {timestamp};
-
-pub const DEFAULT_SLUG_MAX_LEN: u32 = 50;
-pub const DEFAULT_SLUG_MIN_LEN: u32 = 5;
-
-pub const DEFAULT_IPFS_HASH_LEN: u32 = 46;
-
-pub const DEFAULT_USERNAME_MAX_LEN: u32 = 24;
-pub const DEFAULT_USERNAME_MIN_LEN: u32 = 3;
-
-pub const DEFAULT_BLOG_MAX_LEN: u32 = 1_000;
-pub const DEFAULT_POST_MAX_LEN: u32 = 10_000;
-pub const DEFAULT_COMMENT_MAX_LEN: u32 = 1_000;
-
-pub const DEFAULT_UPVOTE_POST_ACTION_WEIGHT: i16 = 5;
-pub const DEFAULT_DOWNVOTE_POST_ACTION_WEIGHT: i16 = -3;
-pub const DEFAULT_SHARE_POST_ACTION_WEIGHT: i16 = 5;
-pub const DEFAULT_CREATE_COMMENT_ACTION_WEIGHT: i16 = 5;
-pub const DEFAULT_UPVOTE_COMMENT_ACTION_WEIGHT: i16 = 4;
-pub const DEFAULT_DOWNVOTE_COMMENT_ACTION_WEIGHT: i16 = -2;
-pub const DEFAULT_SHARE_COMMENT_ACTION_WEIGHT: i16 = 3;
-pub const DEFAULT_FOLLOW_BLOG_ACTION_WEIGHT: i16 = 7;
-pub const DEFAULT_FOLLOW_ACCOUNT_ACTION_WEIGHT: i16 = 3;
 
 pub trait Trait: system::Trait + timestamp::Trait + MaybeDebug {
 
