@@ -869,24 +869,32 @@ decl_module! {
       );
 
       let mut reaction = Self::reaction_by_id(reaction_id).ok_or(MSG_REACTION_NOT_FOUND)?;
-      let mut post = Self::post_by_id(post_id).ok_or(MSG_POST_NOT_FOUND)?;
+      let ref mut post = Self::post_by_id(post_id).ok_or(MSG_POST_NOT_FOUND)?;
 
       ensure!(owner == reaction.created.account, MSG_ONLY_REACTION_OWNER_CAN_UPDATE_REACTION);
       ensure!(reaction.kind != new_kind, MSG_NEW_REACTION_KIND_DO_NOT_DIFFER);
 
       reaction.kind = new_kind;
       reaction.updated = Some(Self::new_change(owner.clone()));
+      let action: ScoringAction;
+      let action_to_cancel: ScoringAction;
       
       match new_kind {
         ReactionKind::Upvote => {
           post.upvotes_count += 1;
           post.downvotes_count -= 1;
+          action_to_cancel = ScoringAction::DownvotePost;
+          action = ScoringAction::UpvotePost;
         },
         ReactionKind::Downvote => {
           post.downvotes_count += 1;
           post.upvotes_count -= 1;
+          action_to_cancel = ScoringAction::UpvotePost;
+          action = ScoringAction::DownvotePost;
         },
       }
+      Self::change_post_score(owner.clone(), post, action_to_cancel)?;
+      Self::change_post_score(owner.clone(), post, action)?;
 
       <ReactionById<T>>::insert(reaction_id, reaction);
       <PostById<T>>::insert(post_id, post);
@@ -903,24 +911,32 @@ decl_module! {
       );
 
       let mut reaction = Self::reaction_by_id(reaction_id).ok_or(MSG_REACTION_NOT_FOUND)?;
-      let mut comment = Self::comment_by_id(comment_id).ok_or(MSG_COMMENT_NOT_FOUND)?;
+      let ref mut comment = Self::comment_by_id(comment_id).ok_or(MSG_COMMENT_NOT_FOUND)?;
 
       ensure!(owner == reaction.created.account, MSG_ONLY_REACTION_OWNER_CAN_UPDATE_REACTION);
       ensure!(reaction.kind != new_kind, MSG_NEW_REACTION_KIND_DO_NOT_DIFFER);
 
       reaction.kind = new_kind;
       reaction.updated = Some(Self::new_change(owner.clone()));
-
+      let action: ScoringAction;
+      let action_to_cancel: ScoringAction;
+      
       match new_kind {
         ReactionKind::Upvote => {
           comment.upvotes_count += 1;
           comment.downvotes_count -= 1;
+          action_to_cancel = ScoringAction::DownvoteComment;
+          action = ScoringAction::UpvoteComment;
         },
         ReactionKind::Downvote => {
           comment.downvotes_count += 1;
           comment.upvotes_count -= 1;
+          action_to_cancel = ScoringAction::UpvoteComment;
+          action = ScoringAction::DownvoteComment;
         },
       }
+      Self::change_comment_score(owner.clone(), comment, action_to_cancel)?;
+      Self::change_comment_score(owner.clone(), comment, action)?;
 
       <ReactionById<T>>::insert(reaction_id, reaction);
       <CommentById<T>>::insert(comment_id, comment);
@@ -945,15 +961,24 @@ decl_module! {
         MSG_NO_POST_REACTION_BY_ACCOUNT_TO_DELETE
       );
       
+      let action_to_cancel: ScoringAction;
       let reaction = Self::reaction_by_id(reaction_id).ok_or(MSG_REACTION_NOT_FOUND)?;
-      let mut post = Self::post_by_id(post_id).ok_or(MSG_POST_NOT_FOUND)?;
+      let ref mut post = Self::post_by_id(post_id).ok_or(MSG_POST_NOT_FOUND)?;
 
       ensure!(owner == reaction.created.account, MSG_ONLY_REACTION_OWNER_CAN_UPDATE_REACTION);
 
       match reaction.kind {
-        ReactionKind::Upvote => post.upvotes_count -= 1,
-        ReactionKind::Downvote => post.downvotes_count -= 1,
+        ReactionKind::Upvote => {
+          post.upvotes_count -= 1;
+          action_to_cancel = ScoringAction::UpvotePost;
+        },
+        ReactionKind::Downvote => {
+          post.downvotes_count -= 1;
+          action_to_cancel = ScoringAction::DownvotePost;
+
+        },
       }
+      Self::change_post_score(owner.clone(), post, action_to_cancel)?;
 
       <PostById<T>>::insert(post_id, post);
       <ReactionById<T>>::remove(reaction_id);
@@ -971,15 +996,23 @@ decl_module! {
         MSG_NO_COMMENT_REACTION_BY_ACCOUNT_TO_DELETE
       );
       
+      let action_to_cancel: ScoringAction;
       let reaction = Self::reaction_by_id(reaction_id).ok_or(MSG_REACTION_NOT_FOUND)?;
-      let mut comment = Self::comment_by_id(comment_id).ok_or(MSG_COMMENT_NOT_FOUND)?;
+      let ref mut comment = Self::comment_by_id(comment_id).ok_or(MSG_COMMENT_NOT_FOUND)?;
       
       ensure!(owner == reaction.created.account, MSG_ONLY_REACTION_OWNER_CAN_UPDATE_REACTION);
 
       match reaction.kind {
-        ReactionKind::Upvote => comment.upvotes_count -= 1,
-        ReactionKind::Downvote => comment.downvotes_count -= 1,
+        ReactionKind::Upvote => {
+          comment.upvotes_count -= 1;
+          action_to_cancel = ScoringAction::UpvoteComment
+        },
+        ReactionKind::Downvote => {
+          comment.downvotes_count -= 1;
+          action_to_cancel = ScoringAction::DownvoteComment
+        },
       }
+      Self::change_comment_score(owner.clone(), comment, action_to_cancel)?;
 
       <CommentById<T>>::insert(comment_id, comment);
       <ReactionIdsByCommentId<T>>::mutate(comment_id, |ids| Self::vec_remove_on(ids, reaction_id));
