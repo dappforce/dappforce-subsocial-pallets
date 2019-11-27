@@ -95,6 +95,8 @@ impl<T: Trait> Module<T> {
 
   pub fn change_post_score(account: T::AccountId, post: &mut Post<T>, action: ScoringAction) -> Result {
     let social_account = Self::get_or_new_social_account(account.clone());
+    <SocialAccountById<T>>::insert(account.clone(), social_account.clone());
+
     let post_id = post.id;
     let mut blog = Self::blog_by_id(post.blog_id).ok_or(MSG_BLOG_NOT_FOUND)?;
     
@@ -135,6 +137,8 @@ impl<T: Trait> Module<T> {
 
   pub fn change_comment_score(account: T::AccountId, comment: &mut Comment<T>, action: ScoringAction) -> Result {
     let social_account = Self::get_or_new_social_account(account.clone());
+    <SocialAccountById<T>>::insert(account.clone(), social_account.clone());
+
     let comment_id = comment.id;
 
     if comment.created.account != account {
