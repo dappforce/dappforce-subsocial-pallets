@@ -13,7 +13,7 @@ pub trait Trait: system::Trait + timestamp::Trait + MaybeDebug {
 
   type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-  type BlogId: Parameter + Member + SimpleArithmetic + Codec + Default + Copy
+  type SpaceId: Parameter + Member + SimpleArithmetic + Codec + Default + Copy
     + As<usize> + As<u64> + MaybeSerializeDebug + PartialEq;
 
   type PostId: Parameter + Member + SimpleArithmetic + Codec + Default + Copy
@@ -38,8 +38,8 @@ pub struct Change<T: Trait> {
 
 #[cfg_attr(feature = "std", derive(Debug))]
 #[derive(Clone, Encode, Decode, PartialEq)]
-pub struct Blog<T: Trait> {
-  pub id: T::BlogId,
+pub struct Space<T: Trait> {
+  pub id: T::SpaceId,
   pub created: Change<T>,
   pub updated: Option<Change<T>>,
 
@@ -51,14 +51,14 @@ pub struct Blog<T: Trait> {
   pub posts_count: u16,
   pub followers_count: u32,
 
-  pub edit_history: Vec<BlogHistoryRecord<T>>,
+  pub edit_history: Vec<SpaceHistoryRecord<T>>,
 
   pub score: i32,
 }
 
 #[cfg_attr(feature = "std", derive(Debug))]
 #[derive(Clone, Encode, Decode, PartialEq)]
-pub struct BlogUpdate<T: Trait> {
+pub struct SpaceUpdate<T: Trait> {
   pub writers: Option<Vec<T::AccountId>>,
   pub slug: Option<Vec<u8>>,
   pub ipfs_hash: Option<Vec<u8>>,
@@ -66,16 +66,16 @@ pub struct BlogUpdate<T: Trait> {
 
 #[cfg_attr(feature = "std", derive(Debug))]
 #[derive(Clone, Encode, Decode, PartialEq)]
-pub struct BlogHistoryRecord<T: Trait> {
+pub struct SpaceHistoryRecord<T: Trait> {
   pub edited: Change<T>,
-  pub old_data: BlogUpdate<T>,
+  pub old_data: SpaceUpdate<T>,
 }
 
 #[cfg_attr(feature = "std", derive(Debug))]
 #[derive(Clone, Encode, Decode, PartialEq)]
 pub struct Post<T: Trait> {
   pub id: T::PostId,
-  pub blog_id: T::BlogId,
+  pub space_id: T::SpaceId,
   pub created: Change<T>,
   pub updated: Option<Change<T>>,
   pub extension: PostExtension<T>,
@@ -97,7 +97,7 @@ pub struct Post<T: Trait> {
 #[cfg_attr(feature = "std", derive(Debug))]
 #[derive(Clone, Encode, Decode, PartialEq)]
 pub struct PostUpdate<T: Trait> {
-  pub blog_id: Option<T::BlogId>,
+  pub space_id: Option<T::SpaceId>,
   pub ipfs_hash: Option<Vec<u8>>,
 }
 
@@ -184,7 +184,7 @@ pub struct Reaction<T: Trait> {
 pub struct SocialAccount<T: Trait> {
   pub followers_count: u32,
   pub following_accounts_count: u16,
-  pub following_blogs_count: u16,
+  pub following_spaces_count: u16,
   pub reputation: u32,
   pub profile: Option<Profile<T>>,
 }
@@ -225,7 +225,7 @@ pub enum ScoringAction {
   UpvoteComment,
   DownvoteComment,
   ShareComment,
-  FollowBlog,
+  FollowSpace,
   FollowAccount,
 }
 
@@ -236,7 +236,7 @@ impl Default for ScoringAction {
 }
 
 decl_storage! {
-  trait Store for Module<T: Trait> as Blogs {
+  trait Store for Module<T: Trait> as Spaces {
 
     pub SlugMinLen get(slug_min_len): u32 = DEFAULT_SLUG_MIN_LEN;
     pub SlugMaxLen get(slug_max_len): u32 = DEFAULT_SLUG_MAX_LEN;
@@ -246,7 +246,7 @@ decl_storage! {
     pub UsernameMinLen get(username_min_len): u32 = DEFAULT_USERNAME_MIN_LEN;
     pub UsernameMaxLen get(username_max_len): u32 = DEFAULT_USERNAME_MAX_LEN;
 
-    pub BlogMaxLen get(blog_max_len): u32 = DEFAULT_BLOG_MAX_LEN;
+    pub SpaceMaxLen get(space_max_len): u32 = DEFAULT_SPACE_MAX_LEN;
     pub PostMaxLen get(post_max_len): u32 = DEFAULT_POST_MAX_LEN;
     pub CommentMaxLen get(comment_max_len): u32 = DEFAULT_COMMENT_MAX_LEN;
 
@@ -257,17 +257,17 @@ decl_storage! {
     pub UpvoteCommentActionWeight get (upvote_comment_action_weight): i16 = DEFAULT_UPVOTE_COMMENT_ACTION_WEIGHT;
     pub DownvoteCommentActionWeight get (downvote_comment_action_weight): i16 = DEFAULT_DOWNVOTE_COMMENT_ACTION_WEIGHT;
     pub ShareCommentActionWeight get (share_comment_action_weight): i16 = DEFAULT_SHARE_COMMENT_ACTION_WEIGHT;
-    pub FollowBlogActionWeight get (follow_blog_action_weight): i16 = DEFAULT_FOLLOW_BLOG_ACTION_WEIGHT;
+    pub FollowSpaceActionWeight get (follow_space_action_weight): i16 = DEFAULT_FOLLOW_SPACE_ACTION_WEIGHT;
     pub FollowAccountActionWeight get (follow_account_action_weight): i16 = DEFAULT_FOLLOW_ACCOUNT_ACTION_WEIGHT;
 
-    pub BlogById get(blog_by_id): map T::BlogId => Option<Blog<T>>;
+    pub SpaceById get(space_by_id): map T::SpaceId => Option<Space<T>>;
     pub PostById get(post_by_id): map T::PostId => Option<Post<T>>;
     pub CommentById get(comment_by_id): map T::CommentId => Option<Comment<T>>;
     pub ReactionById get(reaction_by_id): map T::ReactionId => Option<Reaction<T>>;
     pub SocialAccountById get(social_account_by_id): map T::AccountId => Option<SocialAccount<T>>;
 
-    pub BlogIdsByOwner get(blog_ids_by_owner): map T::AccountId => Vec<T::BlogId>;
-    pub PostIdsByBlogId get(post_ids_by_blog_id): map T::BlogId => Vec<T::PostId>;
+    pub SpaceIdsByOwner get(space_ids_by_owner): map T::AccountId => Vec<T::SpaceId>;
+    pub PostIdsBySpaceId get(post_ids_by_space_id): map T::SpaceId => Vec<T::PostId>;
     pub CommentIdsByPostId get(comment_ids_by_post_id): map T::PostId => Vec<T::CommentId>;
 
     pub ReactionIdsByPostId get(reaction_ids_by_post_id): map T::PostId => Vec<T::ReactionId>;
@@ -275,17 +275,17 @@ decl_storage! {
     pub PostReactionIdByAccount get(post_reaction_id_by_account): map (T::AccountId, T::PostId) => T::ReactionId;
     pub CommentReactionIdByAccount get(comment_reaction_id_by_account): map (T::AccountId, T::CommentId) => T::ReactionId;
 
-    pub BlogIdBySlug get(blog_id_by_slug): map Vec<u8> => Option<T::BlogId>;
+    pub SpaceIdBySlug get(space_id_by_slug): map Vec<u8> => Option<T::SpaceId>;
 
-    pub BlogsFollowedByAccount get(blogs_followed_by_account): map T::AccountId => Vec<T::BlogId>;
-    pub BlogFollowers get(blog_followers): map T::BlogId => Vec<T::AccountId>;
-    pub BlogFollowedByAccount get(blog_followed_by_account): map (T::AccountId, T::BlogId) => bool;
+    pub SpacesFollowedByAccount get(spaces_followed_by_account): map T::AccountId => Vec<T::SpaceId>;
+    pub SpaceFollowers get(space_followers): map T::SpaceId => Vec<T::AccountId>;
+    pub SpaceFollowedByAccount get(space_followed_by_account): map (T::AccountId, T::SpaceId) => bool;
 
     pub AccountFollowedByAccount get(account_followed_by_account): map (T::AccountId, T::AccountId) => bool;
     pub AccountsFollowedByAccount get(accounts_followed_by_account): map T::AccountId => Vec<T::AccountId>;
     pub AccountFollowers get(account_followers): map T::AccountId => Vec<T::AccountId>;
 
-    pub NextBlogId get(next_blog_id): T::BlogId = T::BlogId::sa(1);
+    pub NextSpaceId get(next_space_id): T::SpaceId = T::SpaceId::sa(1);
     pub NextPostId get(next_post_id): T::PostId = T::PostId::sa(1);
     pub NextCommentId get(next_comment_id): T::CommentId = T::CommentId::sa(1);
     pub NextReactionId get(next_reaction_id): T::ReactionId = T::ReactionId::sa(1);
@@ -307,17 +307,17 @@ decl_storage! {
 decl_event! {
   pub enum Event<T> where
     <T as system::Trait>::AccountId,
-    <T as Trait>::BlogId,
+    <T as Trait>::SpaceId,
     <T as Trait>::PostId,
     <T as Trait>::CommentId,
     <T as Trait>::ReactionId
   {
-    BlogCreated(AccountId, BlogId),
-    BlogUpdated(AccountId, BlogId),
-    BlogDeleted(AccountId, BlogId),
+    SpaceCreated(AccountId, SpaceId),
+    SpaceUpdated(AccountId, SpaceId),
+    SpaceDeleted(AccountId, SpaceId),
 
-    BlogFollowed(AccountId, BlogId),
-    BlogUnfollowed(AccountId, BlogId),
+    SpaceFollowed(AccountId, SpaceId),
+    SpaceUnfollowed(AccountId, SpaceId),
 
     AccountReputationChanged(AccountId, ScoringAction, u32),
 
@@ -360,18 +360,18 @@ decl_module! {
       // Stub
     }
 
-    // TODO use BlogUpdate to pass data
-    pub fn create_blog(origin, slug: Vec<u8>, ipfs_hash: Vec<u8>) {
+    // TODO use SpaceUpdate to pass data
+    pub fn create_space(origin, slug: Vec<u8>, ipfs_hash: Vec<u8>) {
       let owner = ensure_signed(origin)?;
 
-      ensure!(slug.len() >= Self::slug_min_len() as usize, MSG_BLOG_SLUG_IS_TOO_SHORT);
-      ensure!(slug.len() <= Self::slug_max_len() as usize, MSG_BLOG_SLUG_IS_TOO_LONG);
-      ensure!(!<BlogIdBySlug<T>>::exists(slug.clone()), MSG_BLOG_SLUG_IS_NOT_UNIQUE);
+      ensure!(slug.len() >= Self::slug_min_len() as usize, MSG_SPACE_SLUG_IS_TOO_SHORT);
+      ensure!(slug.len() <= Self::slug_max_len() as usize, MSG_SPACE_SLUG_IS_TOO_LONG);
+      ensure!(!<SpaceIdBySlug<T>>::exists(slug.clone()), MSG_SPACE_SLUG_IS_NOT_UNIQUE);
       Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
-      let blog_id = Self::next_blog_id();
-      let ref mut new_blog: Blog<T> = Blog {
-        id: blog_id,
+      let space_id = Self::next_space_id();
+      let ref mut new_space: Space<T> = Space {
+        id: space_id,
         created: Self::new_change(owner.clone()),
         updated: None,
         writers: vec![],
@@ -383,50 +383,50 @@ decl_module! {
         score: 0
       };
 
-      // Blog creator automatically follows their blog:
-      Self::add_blog_follower_and_insert_blog(owner.clone(), new_blog, true)?;
+      // Space creator automatically follows their space:
+      Self::add_space_follower_and_insert_space(owner.clone(), new_space, true)?;
 
-      <BlogIdsByOwner<T>>::mutate(owner.clone(), |ids| ids.push(blog_id));
-      <BlogIdBySlug<T>>::insert(slug, blog_id);
-      <NextBlogId<T>>::mutate(|n| { *n += T::BlogId::sa(1); });
+      <SpaceIdsByOwner<T>>::mutate(owner.clone(), |ids| ids.push(space_id));
+      <SpaceIdBySlug<T>>::insert(slug, space_id);
+      <NextSpaceId<T>>::mutate(|n| { *n += T::SpaceId::sa(1); });
     }
 
-    pub fn follow_blog(origin, blog_id: T::BlogId) {
+    pub fn follow_space(origin, space_id: T::SpaceId) {
       let follower = ensure_signed(origin)?;
 
-      let ref mut blog = Self::blog_by_id(blog_id).ok_or(MSG_BLOG_NOT_FOUND)?;
-      ensure!(!Self::blog_followed_by_account((follower.clone(), blog_id)), MSG_ACCOUNT_IS_FOLLOWING_BLOG);
+      let ref mut space = Self::space_by_id(space_id).ok_or(MSG_SPACE_NOT_FOUND)?;
+      ensure!(!Self::space_followed_by_account((follower.clone(), space_id)), MSG_ACCOUNT_IS_FOLLOWING_SPACE);
 
-      Self::add_blog_follower_and_insert_blog(follower.clone(), blog, false)?;
+      Self::add_space_follower_and_insert_space(follower.clone(), space, false)?;
     }
 
-    pub fn unfollow_blog(origin, blog_id: T::BlogId) {
+    pub fn unfollow_space(origin, space_id: T::SpaceId) {
       let follower = ensure_signed(origin)?;
 
-      let ref mut blog = Self::blog_by_id(blog_id).ok_or(MSG_BLOG_NOT_FOUND)?;
-      ensure!(Self::blog_followed_by_account((follower.clone(), blog_id)), MSG_ACCOUNT_IS_NOT_FOLLOWING_BLOG);
+      let ref mut space = Self::space_by_id(space_id).ok_or(MSG_SPACE_NOT_FOUND)?;
+      ensure!(Self::space_followed_by_account((follower.clone(), space_id)), MSG_ACCOUNT_IS_NOT_FOLLOWING_SPACE);
 
       let mut social_account = Self::social_account_by_id(follower.clone()).ok_or(MSG_SOCIAL_ACCOUNT_NOT_FOUND)?;
-      social_account.following_blogs_count = social_account.following_blogs_count
+      social_account.following_spaces_count = social_account.following_spaces_count
         .checked_sub(1)
-        .ok_or(MSG_UNDERFLOW_UNFOLLOWING_BLOG)?;
-      blog.followers_count = blog.followers_count.checked_sub(1).ok_or(MSG_UNDERFLOW_UNFOLLOWING_BLOG)?;
+        .ok_or(MSG_UNDERFLOW_UNFOLLOWING_SPACE)?;
+      space.followers_count = space.followers_count.checked_sub(1).ok_or(MSG_UNDERFLOW_UNFOLLOWING_SPACE)?;
 
-      if blog.created.account != follower {
-        let author = blog.created.account.clone();
-        if let Some(score_diff) = Self::account_reputation_diff_by_account((follower.clone(), author.clone(), ScoringAction::FollowBlog)) {
-          blog.score = blog.score.checked_sub(score_diff as i32).ok_or(MSG_OUT_OF_BOUNDS_UPDATING_BLOG_SCORE)?;
-          Self::change_social_account_reputation(author.clone(), follower.clone(), score_diff * -1, ScoringAction::FollowBlog)?;
+      if space.created.account != follower {
+        let author = space.created.account.clone();
+        if let Some(score_diff) = Self::account_reputation_diff_by_account((follower.clone(), author.clone(), ScoringAction::FollowSpace)) {
+          space.score = space.score.checked_sub(score_diff as i32).ok_or(MSG_OUT_OF_BOUNDS_UPDATING_SPACE_SCORE)?;
+          Self::change_social_account_reputation(author.clone(), follower.clone(), score_diff * -1, ScoringAction::FollowSpace)?;
         }
       }
 
-      <BlogsFollowedByAccount<T>>::mutate(follower.clone(), |blog_ids| Self::vec_remove_on(blog_ids, blog_id));
-      <BlogFollowers<T>>::mutate(blog_id, |account_ids| Self::vec_remove_on(account_ids, follower.clone()));
-      <BlogFollowedByAccount<T>>::remove((follower.clone(), blog_id));
+      <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |space_ids| Self::vec_remove_on(space_ids, space_id));
+      <SpaceFollowers<T>>::mutate(space_id, |account_ids| Self::vec_remove_on(account_ids, follower.clone()));
+      <SpaceFollowedByAccount<T>>::remove((follower.clone(), space_id));
       <SocialAccountById<T>>::insert(follower.clone(), social_account);
-      <BlogById<T>>::insert(blog_id, blog);
+      <SpaceById<T>>::insert(space_id, space);
 
-      Self::deposit_event(RawEvent::BlogUnfollowed(follower.clone(), blog_id));
+      Self::deposit_event(RawEvent::SpaceUnfollowed(follower.clone(), space_id));
     }
 
     pub fn follow_account(origin, account: T::AccountId) {
@@ -490,11 +490,11 @@ decl_module! {
     }
 
     // TODO use PostUpdate to pass data?
-    pub fn create_post(origin, blog_id: T::BlogId, ipfs_hash: Vec<u8>, extension: PostExtension<T>) {
+    pub fn create_post(origin, space_id: T::SpaceId, ipfs_hash: Vec<u8>, extension: PostExtension<T>) {
       let owner = ensure_signed(origin)?;
 
-      let mut blog = Self::blog_by_id(blog_id).ok_or(MSG_BLOG_NOT_FOUND)?;
-      blog.posts_count = blog.posts_count.checked_add(1).ok_or(MSG_OVERFLOW_ADDING_POST_ON_BLOG)?;
+      let mut space = Self::space_by_id(space_id).ok_or(MSG_SPACE_NOT_FOUND)?;
+      space.posts_count = space.posts_count.checked_add(1).ok_or(MSG_OVERFLOW_ADDING_POST_ON_SPACE)?;
 
       let new_post_id = Self::next_post_id();
 
@@ -515,7 +515,7 @@ decl_module! {
 
       let new_post: Post<T> = Post {
         id: new_post_id,
-        blog_id,
+        space_id,
         created: Self::new_change(owner.clone()),
         updated: None,
         extension,
@@ -529,9 +529,9 @@ decl_module! {
       };
 
       <PostById<T>>::insert(new_post_id, new_post);
-      <PostIdsByBlogId<T>>::mutate(blog_id, |ids| ids.push(new_post_id));
+      <PostIdsBySpaceId<T>>::mutate(space_id, |ids| ids.push(new_post_id));
       <NextPostId<T>>::mutate(|n| { *n += T::PostId::sa(1); });
-      <BlogById<T>>::insert(blog_id, blog);
+      <SpaceById<T>>::insert(space_id, space);
 
       Self::deposit_event(RawEvent::PostCreated(owner.clone(), new_post_id));
     }
@@ -718,7 +718,7 @@ decl_module! {
       }
     }
 
-    pub fn update_blog(origin, blog_id: T::BlogId, update: BlogUpdate<T>) {
+    pub fn update_space(origin, space_id: T::SpaceId, update: SpaceUpdate<T>) {
       let owner = ensure_signed(origin)?;
       
       let has_updates = 
@@ -726,59 +726,59 @@ decl_module! {
         update.slug.is_some() ||
         update.ipfs_hash.is_some();
 
-      ensure!(has_updates, MSG_NOTHING_TO_UPDATE_IN_BLOG);
+      ensure!(has_updates, MSG_NOTHING_TO_UPDATE_IN_SPACE);
 
-      let mut blog = Self::blog_by_id(blog_id).ok_or(MSG_BLOG_NOT_FOUND)?;
+      let mut space = Self::space_by_id(space_id).ok_or(MSG_SPACE_NOT_FOUND)?;
 
-      // TODO ensure: blog writers also should be able to edit this blog:
-      ensure!(owner == blog.created.account, MSG_ONLY_BLOG_OWNER_CAN_UPDATE_BLOG);
+      // TODO ensure: space writers also should be able to edit this space:
+      ensure!(owner == space.created.account, MSG_ONLY_SPACE_OWNER_CAN_UPDATE_SPACE);
 
       let mut fields_updated = 0;
-      let mut new_history_record = BlogHistoryRecord {
+      let mut new_history_record = SpaceHistoryRecord {
         edited: Self::new_change(owner.clone()),
-        old_data: BlogUpdate {writers: None, slug: None, ipfs_hash: None}
+        old_data: SpaceUpdate {writers: None, slug: None, ipfs_hash: None}
       };
 
       if let Some(writers) = update.writers {
-        if writers != blog.writers {
+        if writers != space.writers {
           // TODO validate writers.
-          // TODO update BlogIdsByWriter: insert new, delete removed, update only changed writers.
-          new_history_record.old_data.writers = Some(blog.writers);
-          blog.writers = writers;
+          // TODO update SpaceIdsByWriter: insert new, delete removed, update only changed writers.
+          new_history_record.old_data.writers = Some(space.writers);
+          space.writers = writers;
           fields_updated += 1;
         }
       }
 
       if let Some(ipfs_hash) = update.ipfs_hash {
-        if ipfs_hash != blog.ipfs_hash {
+        if ipfs_hash != space.ipfs_hash {
           Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
-          new_history_record.old_data.ipfs_hash = Some(blog.ipfs_hash);
-          blog.ipfs_hash = ipfs_hash;
+          new_history_record.old_data.ipfs_hash = Some(space.ipfs_hash);
+          space.ipfs_hash = ipfs_hash;
           fields_updated += 1;
         }
       }
 
       if let Some(slug) = update.slug {
-        if slug != blog.slug {
+        if slug != space.slug {
           let slug_len = slug.len();
-          ensure!(slug_len >= Self::slug_min_len() as usize, MSG_BLOG_SLUG_IS_TOO_SHORT);
-          ensure!(slug_len <= Self::slug_max_len() as usize, MSG_BLOG_SLUG_IS_TOO_LONG);
-          ensure!(!<BlogIdBySlug<T>>::exists(slug.clone()), MSG_BLOG_SLUG_IS_NOT_UNIQUE);
+          ensure!(slug_len >= Self::slug_min_len() as usize, MSG_SPACE_SLUG_IS_TOO_SHORT);
+          ensure!(slug_len <= Self::slug_max_len() as usize, MSG_SPACE_SLUG_IS_TOO_LONG);
+          ensure!(!<SpaceIdBySlug<T>>::exists(slug.clone()), MSG_SPACE_SLUG_IS_NOT_UNIQUE);
 
-          <BlogIdBySlug<T>>::remove(blog.slug.clone());
-          <BlogIdBySlug<T>>::insert(slug.clone(), blog_id);
-          new_history_record.old_data.slug = Some(blog.slug);
-          blog.slug = slug;
+          <SpaceIdBySlug<T>>::remove(space.slug.clone());
+          <SpaceIdBySlug<T>>::insert(slug.clone(), space_id);
+          new_history_record.old_data.slug = Some(space.slug);
+          space.slug = slug;
           fields_updated += 1;
         }
       }
 
-      // Update this blog only if at least one field should be updated:
+      // Update this space only if at least one field should be updated:
       if fields_updated > 0 {
-        blog.updated = Some(Self::new_change(owner.clone()));
-        blog.edit_history.push(new_history_record);
-        <BlogById<T>>::insert(blog_id, blog);
-        Self::deposit_event(RawEvent::BlogUpdated(owner.clone(), blog_id));
+        space.updated = Some(Self::new_change(owner.clone()));
+        space.edit_history.push(new_history_record);
+        <SpaceById<T>>::insert(space_id, space);
+        Self::deposit_event(RawEvent::SpaceUpdated(owner.clone(), space_id));
       }
     }
     
@@ -786,20 +786,20 @@ decl_module! {
       let owner = ensure_signed(origin)?;
       
       let has_updates = 
-        update.blog_id.is_some() ||
+        update.space_id.is_some() ||
         update.ipfs_hash.is_some();
 
       ensure!(has_updates, MSG_NOTHING_TO_UPDATE_IN_POST);
 
       let mut post = Self::post_by_id(post_id).ok_or(MSG_POST_NOT_FOUND)?;
 
-      // TODO ensure: blog writers also should be able to edit this post:
+      // TODO ensure: space writers also should be able to edit this post:
       ensure!(owner == post.created.account, MSG_ONLY_POST_OWNER_CAN_UPDATE_POST);
 
       let mut fields_updated = 0;
       let mut new_history_record = PostHistoryRecord {
         edited: Self::new_change(owner.clone()),
-        old_data: PostUpdate {blog_id: None, ipfs_hash: None}
+        old_data: PostUpdate {space_id: None, ipfs_hash: None}
       };
 
       if let Some(ipfs_hash) = update.ipfs_hash {
@@ -811,18 +811,18 @@ decl_module! {
         }
       }
 
-      // Move this post to another blog:
-      if let Some(blog_id) = update.blog_id {
-        if blog_id != post.blog_id {
-          Self::ensure_blog_exists(blog_id)?;
+      // Move this post to another space:
+      if let Some(space_id) = update.space_id {
+        if space_id != post.space_id {
+          Self::ensure_space_exists(space_id)?;
           
-          // Remove post_id from its old blog:
-          <PostIdsByBlogId<T>>::mutate(post.blog_id, |post_ids| Self::vec_remove_on(post_ids, post_id));
+          // Remove post_id from its old space:
+          <PostIdsBySpaceId<T>>::mutate(post.space_id, |post_ids| Self::vec_remove_on(post_ids, post_id));
           
-          // Add post_id to its new blog:
-          <PostIdsByBlogId<T>>::mutate(blog_id.clone(), |ids| ids.push(post_id));
-          new_history_record.old_data.blog_id = Some(post.blog_id);
-          post.blog_id = blog_id;
+          // Add post_id to its new space:
+          <PostIdsBySpaceId<T>>::mutate(space_id.clone(), |ids| ids.push(post_id));
+          new_history_record.old_data.space_id = Some(post.space_id);
+          post.space_id = space_id;
           fields_updated += 1;
         }
       }
@@ -944,9 +944,9 @@ decl_module! {
       Self::deposit_event(RawEvent::CommentReactionUpdated(owner.clone(), comment_id, reaction_id));
     }
 
-    // TODO fn delete_blog(origin, blog_id: T::BlogId) {
+    // TODO fn delete_space(origin, space_id: T::SpaceId) {
       // TODO only owner can delete
-      // TODO unfollow all blog followers
+      // TODO unfollow all space followers
     // }
     
     // TODO fn delete_post(origin, post_id: T::PostId) {}
@@ -1022,6 +1022,6 @@ decl_module! {
       Self::deposit_event(RawEvent::CommentReactionDeleted(owner.clone(), comment_id, reaction_id));
     }
 
-    // TODO spend some tokens on: create/update a blog/post/comment.
+    // TODO spend some tokens on: create/update a space/post/comment.
   }
 }

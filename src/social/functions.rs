@@ -1,4 +1,4 @@
-use super::blogs::*;
+use super::spaces::*;
 use super::messages::*;
 
 use rstd::prelude::*;
@@ -9,8 +9,8 @@ use {timestamp};
 
 impl<T: Trait> Module<T> {
 
-  pub fn ensure_blog_exists(blog_id: T::BlogId) -> Result {
-    ensure!(<BlogById<T>>::exists(blog_id), MSG_BLOG_NOT_FOUND);
+  pub fn ensure_space_exists(space_id: T::SpaceId) -> Result {
+    ensure!(<SpaceById<T>>::exists(space_id), MSG_SPACE_NOT_FOUND);
     Ok(())
   }
 
@@ -38,37 +38,37 @@ impl<T: Trait> Module<T> {
     reaction_id
   }
 
-  pub fn add_blog_follower_and_insert_blog(
+  pub fn add_space_follower_and_insert_space(
     follower: T::AccountId,
-    blog: &mut Blog<T>,
-    is_new_blog: bool
+    space: &mut Space<T>,
+    is_new_space: bool
   ) -> Result {
 
-    let blog_id = blog.id;
+    let space_id = space.id;
     let mut social_account = Self::get_or_new_social_account(follower.clone());
-    social_account.following_blogs_count = social_account.following_blogs_count
+    social_account.following_spaces_count = social_account.following_spaces_count
       .checked_add(1)
-      .ok_or(MSG_OVERFLOW_FOLLOWING_BLOG)?;
+      .ok_or(MSG_OVERFLOW_FOLLOWING_SPACE)?;
 
-    blog.followers_count = blog.followers_count.checked_add(1).ok_or(MSG_OVERFLOW_FOLLOWING_BLOG)?;
-    if blog.created.account != follower {
-      let author = blog.created.account.clone();
-      let score_diff = Self::get_score_diff(social_account.reputation, ScoringAction::FollowBlog);
-      blog.score = blog.score.checked_add(score_diff as i32).ok_or(MSG_OUT_OF_BOUNDS_UPDATING_BLOG_SCORE)?;
-      Self::change_social_account_reputation(author.clone(), follower.clone(), score_diff, ScoringAction::FollowBlog)?;
+    space.followers_count = space.followers_count.checked_add(1).ok_or(MSG_OVERFLOW_FOLLOWING_SPACE)?;
+    if space.created.account != follower {
+      let author = space.created.account.clone();
+      let score_diff = Self::get_score_diff(social_account.reputation, ScoringAction::FollowSpace);
+      space.score = space.score.checked_add(score_diff as i32).ok_or(MSG_OUT_OF_BOUNDS_UPDATING_SPACE_SCORE)?;
+      Self::change_social_account_reputation(author.clone(), follower.clone(), score_diff, ScoringAction::FollowSpace)?;
     }
 
-    <BlogById<T>>::insert(blog_id, blog);
+    <SpaceById<T>>::insert(space_id, space);
     <SocialAccountById<T>>::insert(follower.clone(), social_account.clone());
-    <BlogsFollowedByAccount<T>>::mutate(follower.clone(), |ids| ids.push(blog_id));
-    <BlogFollowers<T>>::mutate(blog_id, |ids| ids.push(follower.clone()));
-    <BlogFollowedByAccount<T>>::insert((follower.clone(), blog_id), true);
+    <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |ids| ids.push(space_id));
+    <SpaceFollowers<T>>::mutate(space_id, |ids| ids.push(follower.clone()));
+    <SpaceFollowedByAccount<T>>::insert((follower.clone(), space_id), true);
 
-    if is_new_blog {
-      Self::deposit_event(RawEvent::BlogCreated(follower.clone(), blog_id));
+    if is_new_space {
+      Self::deposit_event(RawEvent::SpaceCreated(follower.clone(), space_id));
     }
 
-    Self::deposit_event(RawEvent::BlogFollowed(follower, blog_id));
+    Self::deposit_event(RawEvent::SpaceFollowed(follower, space_id));
     
     Ok(())
   }
@@ -80,7 +80,7 @@ impl<T: Trait> Module<T> {
       SocialAccount {
         followers_count: 0,
         following_accounts_count: 0,
-        following_blogs_count: 0,
+        following_spaces_count: 0,
         reputation: 1,
         profile: None
       }
@@ -98,13 +98,13 @@ impl<T: Trait> Module<T> {
     <SocialAccountById<T>>::insert(account.clone(), social_account.clone());
 
     let post_id = post.id;
-    let mut blog = Self::blog_by_id(post.blog_id).ok_or(MSG_BLOG_NOT_FOUND)?;
+    let mut space = Self::space_by_id(post.space_id).ok_or(MSG_SPACE_NOT_FOUND)?;
     
     if post.created.account != account {
       if let Some(score_diff) = Self::post_score_by_account((account.clone(), post_id, action)) {
         let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), post.created.account.clone(), action)).ok_or(MSG_REPUTATION_DIFF_NOT_FOUND)?;
         post.score = post.score.checked_add(score_diff as i32 * -1).ok_or(MSG_OUT_OF_BOUNDS_REVERTING_POST_SCORE)?;
-        blog.score = blog.score.checked_add(score_diff as i32 * -1).ok_or(MSG_OUT_OF_BOUNDS_REVERTING_BLOG_SCORE)?;
+        space.score = space.score.checked_add(score_diff as i32 * -1).ok_or(MSG_OUT_OF_BOUNDS_REVERTING_SPACE_SCORE)?;
         Self::change_social_account_reputation(post.created.account.clone(), account.clone(), reputation_diff * -1, action)?;
         <PostScoreByAccount<T>>::remove((account.clone(), post_id, action));
       } else {
@@ -123,13 +123,13 @@ impl<T: Trait> Module<T> {
         }
         let score_diff = Self::get_score_diff(social_account.reputation, action);
         post.score = post.score.checked_add(score_diff as i32).ok_or(MSG_OUT_OF_BOUNDS_UPDATING_POST_SCORE)?;
-        blog.score = blog.score.checked_add(score_diff as i32).ok_or(MSG_OUT_OF_BOUNDS_UPDATING_BLOG_SCORE)?;
+        space.score = space.score.checked_add(score_diff as i32).ok_or(MSG_OUT_OF_BOUNDS_UPDATING_SPACE_SCORE)?;
         Self::change_social_account_reputation(post.created.account.clone(), account.clone(), score_diff, action)?;
         <PostScoreByAccount<T>>::insert((account.clone(), post_id, action), score_diff);
       }
 
       <PostById<T>>::insert(post_id, post.clone());
-      <BlogById<T>>::insert(post.blog_id, blog.clone());
+      <SpaceById<T>>::insert(post.space_id, space.clone());
     }
 
     Ok(())
@@ -221,7 +221,7 @@ impl<T: Trait> Module<T> {
       ScoringAction::UpvoteComment => Self::upvote_comment_action_weight(),
       ScoringAction::DownvoteComment => Self::downvote_comment_action_weight(),
       ScoringAction::ShareComment => Self::share_comment_action_weight(),
-      ScoringAction::FollowBlog => Self::follow_blog_action_weight(),
+      ScoringAction::FollowSpace => Self::follow_space_action_weight(),
       ScoringAction::FollowAccount => Self::follow_account_action_weight(),
     }
   }

@@ -1,14 +1,14 @@
-pub const MSG_BLOG_NOT_FOUND: &str = "Blog was not found by id";
-pub const MSG_BLOG_SLUG_IS_TOO_SHORT: &str = "Blog slug is too short";
-pub const MSG_BLOG_SLUG_IS_TOO_LONG: &str = "Blog slug is too long";
-pub const MSG_BLOG_SLUG_IS_NOT_UNIQUE: &str = "Blog slug is not unique";
-pub const MSG_NOTHING_TO_UPDATE_IN_BLOG: &str = "Nothing to update in a blog";
-pub const MSG_ONLY_BLOG_OWNER_CAN_UPDATE_BLOG: &str = "Only a blog owner can update their blog";
+pub const MSG_SPACE_NOT_FOUND: &str = "Space was not found by id";
+pub const MSG_SPACE_SLUG_IS_TOO_SHORT: &str = "Space slug is too short";
+pub const MSG_SPACE_SLUG_IS_TOO_LONG: &str = "Space slug is too long";
+pub const MSG_SPACE_SLUG_IS_NOT_UNIQUE: &str = "Space slug is not unique";
+pub const MSG_NOTHING_TO_UPDATE_IN_SPACE: &str = "Nothing to update in a space";
+pub const MSG_ONLY_SPACE_OWNER_CAN_UPDATE_SPACE: &str = "Only a space owner can update their space";
 
 pub const MSG_POST_NOT_FOUND: &str = "Post was not found by id";
 pub const MSG_NOTHING_TO_UPDATE_IN_POST: &str = "Nothing to update in a post";
 pub const MSG_ONLY_POST_OWNER_CAN_UPDATE_POST: &str = "Only post owner can update their post";
-pub const MSG_OVERFLOW_ADDING_POST_ON_BLOG: &str = "Overflow adding post on blog";
+pub const MSG_OVERFLOW_ADDING_POST_ON_SPACE: &str = "Overflow adding post on space";
 
 pub const MSG_COMMENT_NOT_FOUND: &str = "Comment was not found by id";
 pub const MSG_UNKNOWN_PARENT_COMMENT: &str = "Unknown parent comment id";
@@ -31,14 +31,14 @@ pub const MSG_OVERFLOW_DOWNVOTING_COMMENT: &str = "Overflow downvoting comment";
 pub const MSG_ONLY_REACTION_OWNER_CAN_UPDATE_REACTION: &str = "Only reaction owner can update their reaction";
 pub const MSG_NEW_REACTION_KIND_DO_NOT_DIFFER: &str = "New reaction kind is the same as old one";
 
-pub const MSG_ACCOUNT_IS_FOLLOWING_BLOG: &str = "Account is already following this blog";
-pub const MSG_ACCOUNT_IS_NOT_FOLLOWING_BLOG: &str = "Account is not following this blog";
+pub const MSG_ACCOUNT_IS_FOLLOWING_SPACE: &str = "Account is already following this space";
+pub const MSG_ACCOUNT_IS_NOT_FOLLOWING_SPACE: &str = "Account is not following this space";
 pub const MSG_ACCOUNT_CANNOT_FOLLOW_ITSELF: &str = "Account can not follow itself";
 pub const MSG_ACCOUNT_CANNOT_UNFOLLOW_ITSELF: &str = "Account can not unfollow itself";
 pub const MSG_ACCOUNT_IS_ALREADY_FOLLOWED: &str = "Account is already followed";
 pub const MSG_ACCOUNT_IS_NOT_FOLLOWED: &str = "Account is not followed by follower";
-pub const MSG_UNDERFLOW_UNFOLLOWING_BLOG: &str = "Underflow unfollowing blog";
-pub const MSG_OVERFLOW_FOLLOWING_BLOG: &str = "Overflow following blog";
+pub const MSG_UNDERFLOW_UNFOLLOWING_SPACE: &str = "Underflow unfollowing space";
+pub const MSG_OVERFLOW_FOLLOWING_SPACE: &str = "Overflow following space";
 pub const MSG_OVERFLOW_FOLLOWING_ACCOUNT: &str = "Overflow following account";
 pub const MSG_UNDERFLOW_UNFOLLOWING_ACCOUNT: &str = "Overflow following account";
 
@@ -48,8 +48,8 @@ pub const MSG_FOLLOWED_ACCOUNT_NOT_FOUND: &str = "Followed social account was no
 
 pub const MSG_IPFS_IS_INCORRECT: &str = "IPFS-hash is not correct";
 
-pub const MSG_OUT_OF_BOUNDS_UPDATING_BLOG_SCORE: &str = "Out of bounds updating blog score";
-pub const MSG_OUT_OF_BOUNDS_REVERTING_BLOG_SCORE: &str = "Out of bounds reverting blog score";
+pub const MSG_OUT_OF_BOUNDS_UPDATING_SPACE_SCORE: &str = "Out of bounds updating space score";
+pub const MSG_OUT_OF_BOUNDS_REVERTING_SPACE_SCORE: &str = "Out of bounds reverting space score";
 pub const MSG_OUT_OF_BOUNDS_UPDATING_POST_SCORE: &str = "Out of bounds updating post score";
 pub const MSG_OUT_OF_BOUNDS_REVERTING_POST_SCORE: &str = "Out of bounds reverting post score";
 pub const MSG_OUT_OF_BOUNDS_UPDATING_COMMENT_SCORE: &str = "Out of bounds updating comment score";

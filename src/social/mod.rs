@@ -1,7 +1,7 @@
 pub mod defaults;
 pub mod messages;
 pub mod functions;
-pub mod blogs;
+pub mod spaces;
 
 // Tests related:
 mod mock;

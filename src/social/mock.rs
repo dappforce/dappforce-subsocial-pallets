@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-pub use super::blogs;
+pub use super::spaces;
 pub use system;
 
 pub use primitives::{H256, Blake2Hasher};
@@ -17,7 +17,7 @@ impl_outer_origin! {
 }
 
 pub type AccountId = u64;
-pub type BlogId = u32;
+pub type SpaceId = u32;
 pub type PostId = u32;
 pub type CommentId = u32;
 pub type ReactionId = u32;
@@ -43,9 +43,9 @@ impl timestamp::Trait for Test {
   type OnTimestampSet = ();
 }
 
-impl blogs::Trait for Test {
+impl spaces::Trait for Test {
   type Event = ();
-  type BlogId = BlogId;
+  type SpaceId = SpaceId;
   type PostId = PostId;
   type CommentId = CommentId;
   type ReactionId = ReactionId;
@@ -60,4 +60,4 @@ pub fn build_ext() -> runtime_io::TestExternalities<Blake2Hasher> {
   t.into()
 }
 
-pub type Blogs = blogs::Module<Test>;
+pub type Spaces = spaces::Module<Test>;

@@ -1,7 +1,6 @@
 //! The Substrate Node Template runtime. This can be compiled with `#[no_std]`, ready for Wasm.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(not(feature = "std"), feature(alloc))]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 
@@ -17,7 +16,7 @@ extern crate parity_codec_derive;
 pub mod currency;
 pub mod social;
 mod migration;
-use social::blogs;
+use social::spaces;
 use client::{
     block_builder::api::{self as block_builder_api, CheckInherentsResult, InherentData},
     impl_runtime_apis, runtime_api as client_api,
@@ -228,9 +227,9 @@ impl currency::GovernanceCurrency for Runtime {
     type Currency = balances::Module<Self>;
 }
 
-impl blogs::Trait for Runtime {
+impl spaces::Trait for Runtime {
     type Event = Event;
-    type BlogId = u64;
+    type SpaceId = u64;
     type PostId = u64;
     type CommentId = u64;
     type ReactionId = u64;
@@ -267,7 +266,7 @@ construct_runtime!(
 		Sudo: sudo,
         FinalityTracker: finality_tracker::{Module, Call, Inherent},
 		Grandpa: grandpa::{Module, Call, Storage, Config<T>, Log(), Event<T>},
-        Blogs: blogs::{Module, Call, Storage, Event<T>},
+        Spaces: spaces::{Module, Call, Storage, Event<T>},
 		Migration: migration::{Module, Call, Storage, Event<T>},
 	}
 );
