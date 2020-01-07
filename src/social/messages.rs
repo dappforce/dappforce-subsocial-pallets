@@ -1,7 +1,7 @@
 pub const MSG_SPACE_NOT_FOUND: &str = "Space was not found by id";
-pub const MSG_SPACE_SLUG_IS_TOO_SHORT: &str = "Space slug is too short";
-pub const MSG_SPACE_SLUG_IS_TOO_LONG: &str = "Space slug is too long";
-pub const MSG_SPACE_SLUG_IS_NOT_UNIQUE: &str = "Space slug is not unique";
+pub const MSG_SPACE_HANDLE_IS_TOO_SHORT: &str = "Space handle is too short";
+pub const MSG_SPACE_HANDLE_IS_TOO_LONG: &str = "Space handle is too long";
+pub const MSG_SPACE_HANDLE_IS_NOT_UNIQUE: &str = "Space handle is not unique";
 pub const MSG_NOTHING_TO_UPDATE_IN_SPACE: &str = "Nothing to update in a space";
 pub const MSG_ONLY_SPACE_OWNER_CAN_UPDATE_SPACE: &str = "Only a space owner can update their space";
 

@@ -1,7 +1,7 @@
 pub const DEFAULT_IPFS_HASH_LEN: u32 = 46;
 
-pub const DEFAULT_SLUG_MIN_LEN: u32 = 5;
-pub const DEFAULT_SLUG_MAX_LEN: u32 = 50;
+pub const DEFAULT_HANDLE_MIN_LEN: u32 = 3;
+pub const DEFAULT_HANDLE_MAX_LEN: u32 = 50;
 
 pub const DEFAULT_USERNAME_MIN_LEN: u32 = 3;
 pub const DEFAULT_USERNAME_MAX_LEN: u32 = 50;

@@ -44,8 +44,8 @@ pub struct Space<T: Trait> {
   pub updated: Option<Change<T>>,
 
   // Can be updated by the owner:
-  pub writers: Vec<T::AccountId>,
-  pub slug: Vec<u8>,
+  pub owners: Vec<T::AccountId>,
+  pub handle: Vec<u8>,
   pub ipfs_hash: Vec<u8>,
 
   pub posts_count: u16,
@@ -59,8 +59,8 @@ pub struct Space<T: Trait> {
 #[cfg_attr(feature = "std", derive(Debug))]
 #[derive(Clone, Encode, Decode, PartialEq)]
 pub struct SpaceUpdate<T: Trait> {
-  pub writers: Option<Vec<T::AccountId>>,
-  pub slug: Option<Vec<u8>>,
+  pub owners: Option<Vec<T::AccountId>>,
+  pub handle: Option<Vec<u8>>,
   pub ipfs_hash: Option<Vec<u8>>,
 }
 
@@ -238,8 +238,8 @@ impl Default for ScoringAction {
 decl_storage! {
   trait Store for Module<T: Trait> as Spaces {
 
-    pub SlugMinLen get(slug_min_len): u32 = DEFAULT_SLUG_MIN_LEN;
-    pub SlugMaxLen get(slug_max_len): u32 = DEFAULT_SLUG_MAX_LEN;
+    pub HandleMinLen get(handle_min_len): u32 = DEFAULT_HANDLE_MIN_LEN;
+    pub HandleMaxLen get(handle_max_len): u32 = DEFAULT_HANDLE_MAX_LEN;
 
     pub IpfsHashLen get(ipfs_hash_len): u32 = DEFAULT_IPFS_HASH_LEN;
 
@@ -275,7 +275,7 @@ decl_storage! {
     pub PostReactionIdByAccount get(post_reaction_id_by_account): map (T::AccountId, T::PostId) => T::ReactionId;
     pub CommentReactionIdByAccount get(comment_reaction_id_by_account): map (T::AccountId, T::CommentId) => T::ReactionId;
 
-    pub SpaceIdBySlug get(space_id_by_slug): map Vec<u8> => Option<T::SpaceId>;
+    pub SpaceIdByHandle get(space_id_by_handle): map Vec<u8> => Option<T::SpaceId>;
 
     pub SpacesFollowedByAccount get(spaces_followed_by_account): map T::AccountId => Vec<T::SpaceId>;
     pub SpaceFollowers get(space_followers): map T::SpaceId => Vec<T::AccountId>;
@@ -361,12 +361,12 @@ decl_module! {
     }
 
     // TODO use SpaceUpdate to pass data
-    pub fn create_space(origin, slug: Vec<u8>, ipfs_hash: Vec<u8>) {
+    pub fn create_space(origin, handle: Vec<u8>, ipfs_hash: Vec<u8>) {
       let owner = ensure_signed(origin)?;
 
-      ensure!(slug.len() >= Self::slug_min_len() as usize, MSG_SPACE_SLUG_IS_TOO_SHORT);
-      ensure!(slug.len() <= Self::slug_max_len() as usize, MSG_SPACE_SLUG_IS_TOO_LONG);
-      ensure!(!<SpaceIdBySlug<T>>::exists(slug.clone()), MSG_SPACE_SLUG_IS_NOT_UNIQUE);
+      ensure!(handle.len() >= Self::handle_min_len() as usize, MSG_SPACE_HANDLE_IS_TOO_SHORT);
+      ensure!(handle.len() <= Self::handle_max_len() as usize, MSG_SPACE_HANDLE_IS_TOO_LONG);
+      ensure!(!<SpaceIdByHandle<T>>::exists(handle.clone()), MSG_SPACE_HANDLE_IS_NOT_UNIQUE);
       Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
       let space_id = Self::next_space_id();
@@ -374,8 +374,8 @@ decl_module! {
         id: space_id,
         created: Self::new_change(owner.clone()),
         updated: None,
-        writers: vec![],
-        slug: slug.clone(),
+        owners: vec![],
+        handle: handle.clone(),
         ipfs_hash,
         posts_count: 0,
         followers_count: 0,
@@ -387,7 +387,7 @@ decl_module! {
       Self::add_space_follower_and_insert_space(owner.clone(), new_space, true)?;
 
       <SpaceIdsByOwner<T>>::mutate(owner.clone(), |ids| ids.push(space_id));
-      <SpaceIdBySlug<T>>::insert(slug, space_id);
+      <SpaceIdByHandle<T>>::insert(handle, space_id);
       <NextSpaceId<T>>::mutate(|n| { *n += T::SpaceId::sa(1); });
     }
 
@@ -723,7 +723,7 @@ decl_module! {
       
       let has_updates = 
         update.writers.is_some() ||
-        update.slug.is_some() ||
+        update.handle.is_some() ||
         update.ipfs_hash.is_some();
 
       ensure!(has_updates, MSG_NOTHING_TO_UPDATE_IN_SPACE);
@@ -736,7 +736,7 @@ decl_module! {
       let mut fields_updated = 0;
       let mut new_history_record = SpaceHistoryRecord {
         edited: Self::new_change(owner.clone()),
-        old_data: SpaceUpdate {writers: None, slug: None, ipfs_hash: None}
+        old_data: SpaceUpdate {writers: None, handle: None, ipfs_hash: None}
       };
 
       if let Some(writers) = update.writers {
@@ -758,17 +758,17 @@ decl_module! {
         }
       }
 
-      if let Some(slug) = update.slug {
-        if slug != space.slug {
-          let slug_len = slug.len();
-          ensure!(slug_len >= Self::slug_min_len() as usize, MSG_SPACE_SLUG_IS_TOO_SHORT);
-          ensure!(slug_len <= Self::slug_max_len() as usize, MSG_SPACE_SLUG_IS_TOO_LONG);
-          ensure!(!<SpaceIdBySlug<T>>::exists(slug.clone()), MSG_SPACE_SLUG_IS_NOT_UNIQUE);
+      if let Some(handle) = update.handle {
+        if handle != space.handle {
+          let handle_len = handle.len();
+          ensure!(handle_len >= Self::handle_min_len() as usize, MSG_SPACE_HANDLE_IS_TOO_SHORT);
+          ensure!(handle_len <= Self::handle_max_len() as usize, MSG_SPACE_HANDLE_IS_TOO_LONG);
+          ensure!(!<SpaceIdByHandle<T>>::exists(handle.clone()), MSG_SPACE_HANDLE_IS_NOT_UNIQUE);
 
-          <SpaceIdBySlug<T>>::remove(space.slug.clone());
-          <SpaceIdBySlug<T>>::insert(slug.clone(), space_id);
-          new_history_record.old_data.slug = Some(space.slug);
-          space.slug = slug;
+          <SpaceIdByHandle<T>>::remove(space.handle.clone());
+          <SpaceIdByHandle<T>>::insert(handle.clone(), space_id);
+          new_history_record.old_data.handle = Some(space.handle);
+          space.handle = handle;
           fields_updated += 1;
         }
       }
