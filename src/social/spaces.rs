@@ -44,7 +44,7 @@ pub struct Space<T: Trait> {
   pub updated: Option<Change<T>>,
 
   // Can be updated by the owner:
-  pub owners: Vec<T::AccountId>,
+  // pub owners: Vec<T::AccountId>,
   pub handle: Vec<u8>,
 
   pub ipfs_hash: Option<Vec<u8>>,
@@ -58,8 +58,8 @@ pub struct Space<T: Trait> {
 
 #[cfg_attr(feature = "std", derive(Debug))]
 #[derive(Clone, Encode, Decode, PartialEq)]
-pub struct SpaceUpdate<T: Trait> {
-  pub owners: Option<Vec<T::AccountId>>,
+pub struct SpaceUpdate {
+  // pub owners: Option<Vec<T::AccountId>>,
   pub handle: Option<Vec<u8>>,
   pub ipfs_hash: Option<Vec<u8>>,
 }
@@ -68,7 +68,7 @@ pub struct SpaceUpdate<T: Trait> {
 #[derive(Clone, Encode, Decode, PartialEq)]
 pub struct SpaceHistoryRecord<T: Trait> {
   pub edited: Change<T>,
-  pub old_data: SpaceUpdate<T>,
+  pub old_data: SpaceUpdate,
 }
 
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -367,7 +367,7 @@ decl_module! {
       ensure!(handle.len() >= Self::handle_min_len() as usize, MSG_SPACE_HANDLE_IS_TOO_SHORT);
       ensure!(handle.len() <= Self::handle_max_len() as usize, MSG_SPACE_HANDLE_IS_TOO_LONG);
       ensure!(!<SpaceIdByHandle<T>>::exists(handle.clone()), MSG_SPACE_HANDLE_IS_NOT_UNIQUE);
-      if let Some(ipfs_hash_unwrapped) = ipfs_hash {
+      if let Some(ipfs_hash_unwrapped) = ipfs_hash.clone() {
         Self::is_ipfs_hash_valid(ipfs_hash_unwrapped)?;
       }
 
@@ -376,9 +376,9 @@ decl_module! {
         id: space_id,
         created: Self::new_change(owner.clone()),
         updated: None,
-        owners: vec![],
+        // owners: vec![],
         handle: handle.clone(),
-        ipfs_hash,
+        ipfs_hash: ipfs_hash,
         posts_count: 0,
         followers_count: 0,
         edit_history: vec![],
@@ -720,11 +720,11 @@ decl_module! {
       }
     }
 
-    pub fn update_space(origin, space_id: T::SpaceId, update: SpaceUpdate<T>) {
+    pub fn update_space(origin, space_id: T::SpaceId, update: SpaceUpdate) {
       let owner = ensure_signed(origin)?;
       
       let has_updates = 
-        update.writers.is_some() ||
+        // update.writers.is_some() ||
         update.handle.is_some() ||
         update.ipfs_hash.is_some();
 
@@ -738,9 +738,10 @@ decl_module! {
       let mut fields_updated = 0;
       let mut new_history_record = SpaceHistoryRecord {
         edited: Self::new_change(owner.clone()),
-        old_data: SpaceUpdate {writers: None, handle: None, ipfs_hash: None}
+        old_data: SpaceUpdate {/*writers: None, */handle: None, ipfs_hash: None}
       };
 
+      /*
       if let Some(writers) = update.writers {
         if writers != space.writers {
           // TODO validate writers.
@@ -750,12 +751,13 @@ decl_module! {
           fields_updated += 1;
         }
       }
+      */
 
       if let Some(ipfs_hash) = update.ipfs_hash {
-        if ipfs_hash != space.ipfs_hash {
+        if Some(ipfs_hash.clone()) != space.ipfs_hash {
           Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
-          new_history_record.old_data.ipfs_hash = Some(space.ipfs_hash);
-          space.ipfs_hash = ipfs_hash;
+          new_history_record.old_data.ipfs_hash = space.ipfs_hash;
+          space.ipfs_hash = Some(ipfs_hash);
           fields_updated += 1;
         }
       }
