@@ -46,12 +46,12 @@ pub struct Space<T: Trait> {
   // Can be updated by the owner:
   pub owners: Vec<T::AccountId>,
   pub handle: Vec<u8>,
-  pub ipfs_hash: Vec<u8>,
 
-  pub posts_count: u16,
-  pub followers_count: u32,
-
+  pub ipfs_hash: Option<Vec<u8>>,
   pub edit_history: Vec<SpaceHistoryRecord<T>>,
+
+  pub followers_count: u32,
+  pub posts_count: u32,
 
   pub score: i32,
 }
@@ -361,13 +361,15 @@ decl_module! {
     }
 
     // TODO use SpaceUpdate to pass data
-    pub fn create_space(origin, handle: Vec<u8>, ipfs_hash: Vec<u8>) {
+    pub fn create_space(origin, handle: Vec<u8>, ipfs_hash: Option<Vec<u8>>) {
       let owner = ensure_signed(origin)?;
 
       ensure!(handle.len() >= Self::handle_min_len() as usize, MSG_SPACE_HANDLE_IS_TOO_SHORT);
       ensure!(handle.len() <= Self::handle_max_len() as usize, MSG_SPACE_HANDLE_IS_TOO_LONG);
       ensure!(!<SpaceIdByHandle<T>>::exists(handle.clone()), MSG_SPACE_HANDLE_IS_NOT_UNIQUE);
-      Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
+      if let Some(ipfs_hash_unwrapped) = ipfs_hash {
+        Self::is_ipfs_hash_valid(ipfs_hash_unwrapped)?;
+      }
 
       let space_id = Self::next_space_id();
       let ref mut new_space: Space<T> = Space {
