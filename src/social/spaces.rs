@@ -27,11 +27,18 @@ pub trait Trait: system::Trait + timestamp::Trait + MaybeDebug {
 }
 
 #[cfg_attr(feature = "std", derive(Debug))]
-#[derive(Clone, Copy, Encode, Decode, PartialEq)]
+#[derive(Clone, Encode, Decode, PartialEq)]
 pub struct Change<T: Trait> {
-  pub account: T::AccountId,
+  pub on_behalf: SpacedAccount<T>,
   pub block: T::BlockNumber,
   pub time: T::Moment,
+}
+
+#[cfg_attr(feature = "std", derive(Debug))]
+#[derive(Clone, Copy, Encode, Decode, PartialEq)]
+pub struct SpacedAccount<T: Trait> {
+  pub account: T::AccountId,
+  pub space: Option<T::SpaceId>,
 }
 
 // TODO add a schema along w/ JSON, maybe create a struct?
@@ -51,6 +58,7 @@ pub struct Space<T: Trait> {
   pub edit_history: Vec<SpaceHistoryRecord<T>>,
 
   pub followers_count: u32,
+  pub following_count: u16,
   pub posts_count: u32,
 
   pub score: i32,
@@ -179,42 +187,6 @@ pub struct Reaction<T: Trait> {
   pub kind: ReactionKind,
 }
 
-#[cfg_attr(feature = "std", derive(Debug))]
-#[derive(Clone, Encode, Decode, PartialEq)]
-pub struct SocialAccount<T: Trait> {
-  pub followers_count: u32,
-  pub following_accounts_count: u16,
-  pub following_spaces_count: u16,
-  pub reputation: u32,
-  pub profile: Option<Profile<T>>,
-}
-
-#[cfg_attr(feature = "std", derive(Debug))]
-#[derive(Clone, Encode, Decode, PartialEq)]
-pub struct Profile<T: Trait> {
-  pub created: Change<T>,
-  pub updated: Option<Change<T>>,
-
-  pub username: Vec<u8>,
-  pub ipfs_hash: Vec<u8>,
-  
-  pub edit_history: Vec<ProfileHistoryRecord<T>>,
-}
-
-#[cfg_attr(feature = "std", derive(Debug))]
-#[derive(Clone, Encode, Decode, PartialEq)]
-pub struct ProfileUpdate {
-  pub username: Option<Vec<u8>>,
-  pub ipfs_hash: Option<Vec<u8>>,
-}
-
-#[cfg_attr(feature = "std", derive(Debug))]
-#[derive(Clone, Encode, Decode, PartialEq)]
-pub struct ProfileHistoryRecord<T: Trait> {
-  pub edited: Change<T>,
-  pub old_data: ProfileUpdate,
-}
-
 /*
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 #[derive(Clone, Copy, Encode, Decode, PartialEq, Eq)]
@@ -227,12 +199,11 @@ pub enum ScoringAction {
   DownvoteComment,
   ShareComment,
   FollowSpace,
-  FollowAccount,
 }
 
 impl Default for ScoringAction {
   fn default() -> Self {
-    ScoringAction::FollowAccount
+    ScoringAction::FollowSpace
   }
 }
 */
@@ -244,9 +215,6 @@ decl_storage! {
     pub HandleMaxLen get(handle_max_len): u32 = DEFAULT_HANDLE_MAX_LEN;
 
     pub IpfsHashLen get(ipfs_hash_len): u32 = DEFAULT_IPFS_HASH_LEN;
-
-    pub UsernameMinLen get(username_min_len): u32 = DEFAULT_USERNAME_MIN_LEN;
-    pub UsernameMaxLen get(username_max_len): u32 = DEFAULT_USERNAME_MAX_LEN;
 
     pub SpaceMaxLen get(space_max_len): u32 = DEFAULT_SPACE_MAX_LEN;
     pub PostMaxLen get(post_max_len): u32 = DEFAULT_POST_MAX_LEN;
@@ -267,26 +235,21 @@ decl_storage! {
     pub PostById get(post_by_id): map T::PostId => Option<Post<T>>;
     pub CommentById get(comment_by_id): map T::CommentId => Option<Comment<T>>;
     pub ReactionById get(reaction_by_id): map T::ReactionId => Option<Reaction<T>>;
-    pub SocialAccountById get(social_account_by_id): map T::AccountId => Option<SocialAccount<T>>;
 
-    pub SpaceIdsByOwner get(space_ids_by_owner): map T::AccountId => Vec<T::SpaceId>;
     pub PostIdsBySpaceId get(post_ids_by_space_id): map T::SpaceId => Vec<T::PostId>;
     pub CommentIdsByPostId get(comment_ids_by_post_id): map T::PostId => Vec<T::CommentId>;
 
     pub ReactionIdsByPostId get(reaction_ids_by_post_id): map T::PostId => Vec<T::ReactionId>;
     pub ReactionIdsByCommentId get(reaction_ids_by_comment_id): map T::CommentId => Vec<T::ReactionId>;
-    pub PostReactionIdByAccount get(post_reaction_id_by_account): map (T::AccountId, T::PostId) => T::ReactionId;
-    pub CommentReactionIdByAccount get(comment_reaction_id_by_account): map (T::AccountId, T::CommentId) => T::ReactionId;
+    pub PostReactionIdByAccount get(post_reaction_id_by_account): map (SpacedAccount<T>, T::PostId) => T::ReactionId;
+    pub CommentReactionIdByAccount get(comment_reaction_id_by_account): map (SpacedAccount<T>, T::CommentId) => T::ReactionId;
 
     pub SpaceIdByHandle get(space_id_by_handle): map Vec<u8> => Option<T::SpaceId>;
+    pub SpaceIdsByOwner get(space_ids_by_owner): map T::AccountId => Vec<T::SpaceId>;
 
-    pub SpacesFollowedByAccount get(spaces_followed_by_account): map T::AccountId => Vec<T::SpaceId>;
-    pub SpaceFollowers get(space_followers): map T::SpaceId => Vec<T::AccountId>;
-    pub SpaceFollowedByAccount get(space_followed_by_account): map (T::AccountId, T::SpaceId) => bool;
-
-    pub AccountFollowedByAccount get(account_followed_by_account): map (T::AccountId, T::AccountId) => bool;
-    pub AccountsFollowedByAccount get(accounts_followed_by_account): map T::AccountId => Vec<T::AccountId>;
-    pub AccountFollowers get(account_followers): map T::AccountId => Vec<T::AccountId>;
+    pub SpaceFollowers get(space_followers): map T::SpaceId => Vec<T::SpaceId>;
+    pub SpacesFollowedBySpace get(spaces_followed_by_space): map T::SpaceId => Vec<T::SpaceId>;
+    pub SpaceFollowedBySpace get(space_followed_by_space): map (T::SpaceId, T::SpaceId) => bool;
 
     pub NextSpaceId get(next_space_id): T::SpaceId = T::SpaceId::sa(1);
     pub NextPostId get(next_post_id): T::PostId = T::PostId::sa(1);
@@ -302,8 +265,6 @@ decl_storage! {
 
     pub CommentSharesByAccount get(comment_shares_by_account): map (T::AccountId, T::CommentId) => u16;
     pub SharedPostIdsByOriginalCommentId get(shared_post_ids_by_original_comment_id): map T::CommentId => Vec<T::PostId>;
-
-    pub AccountByProfileUsername get(account_by_profile_username): map Vec<u8> => Option<T::AccountId>;
   }
 }
 
@@ -324,9 +285,6 @@ decl_event! {
 
     // AccountReputationChanged(AccountId, ScoringAction, u32),
 
-    AccountFollowed(AccountId, AccountId),
-    AccountUnfollowed(AccountId, AccountId),
-
     PostCreated(AccountId, PostId),
     PostUpdated(AccountId, PostId),
     PostDeleted(AccountId, PostId),
@@ -344,9 +302,6 @@ decl_event! {
     CommentReactionCreated(AccountId, CommentId, ReactionId),
     CommentReactionUpdated(AccountId, CommentId, ReactionId),
     CommentReactionDeleted(AccountId, CommentId, ReactionId),
-
-    ProfileCreated(AccountId),
-    ProfileUpdated(AccountId),
   }
 }
 
@@ -364,55 +319,57 @@ decl_module! {
     }
 
     // TODO use SpaceUpdate to pass data
-    pub fn create_space(origin, handle: Vec<u8>, ipfs_hash: Option<Vec<u8>>) {
+    pub fn create_space(origin, on_behalf: T::SpaceId, handle: Vec<u8>, ipfs_hash: Option<Vec<u8>>) {
       let owner = ensure_signed(origin)?;
 
-      ensure!(handle.len() >= Self::handle_min_len() as usize, MSG_SPACE_HANDLE_IS_TOO_SHORT);
-      ensure!(handle.len() <= Self::handle_max_len() as usize, MSG_SPACE_HANDLE_IS_TOO_LONG);
-      ensure!(!<SpaceIdByHandle<T>>::exists(handle.clone()), MSG_SPACE_HANDLE_IS_NOT_UNIQUE);
+      Self::is_space_handle_valid(handle.clone())?;
       if let Some(ipfs_hash_unwrapped) = ipfs_hash.clone() {
         Self::is_ipfs_hash_valid(ipfs_hash_unwrapped)?;
       }
 
       let space_id = Self::next_space_id();
+      let first_space = Self::space_ids_by_owner(owner.clone()).is_empty();
+      let from_space_id = if first_space { space_id } else { on_behalf };
+
       let ref mut new_space: Space<T> = Space {
         id: space_id,
-        created: Self::new_change(owner.clone()),
+        created: Self::new_change(Self::get_spaced_account(owner.clone(), on_behalf)),
         updated: None,
         // owners: vec![],
         handle: handle.clone(),
         ipfs_hash: ipfs_hash,
-        posts_count: 0,
-        followers_count: 0,
         edit_history: vec![],
+        followers_count: 0,
+        following_count: 0,
+        posts_count: 0,
         score: 0
       };
 
       // Space creator automatically follows their space:
-      Self::add_space_follower_and_insert_space(owner.clone(), new_space, true)?;
+      Self::add_space_follower_and_insert_space(Self::get_spaced_account(owner.clone(), from_space_id), new_space, true)?;
 
       <SpaceIdsByOwner<T>>::mutate(owner.clone(), |ids| ids.push(space_id));
       <SpaceIdByHandle<T>>::insert(handle, space_id);
       <NextSpaceId<T>>::mutate(|n| { *n += T::SpaceId::sa(1); });
     }
 
-    pub fn follow_space(origin, space_id: T::SpaceId) {
+    pub fn follow_space(origin, on_behalf: T::SpaceId, space_id: T::SpaceId) {
       let follower = ensure_signed(origin)?;
 
       let ref mut space = Self::space_by_id(space_id).ok_or(MSG_SPACE_NOT_FOUND)?;
-      ensure!(!Self::space_followed_by_account((follower.clone(), space_id)), MSG_ACCOUNT_IS_FOLLOWING_SPACE);
+      ensure!(!Self::space_followed_by_space((on_behalf, space_id)), MSG_ACCOUNT_IS_FOLLOWING_SPACE);
 
-      Self::add_space_follower_and_insert_space(follower.clone(), space, false)?;
+      Self::add_space_follower_and_insert_space(Self::get_spaced_account(follower.clone(), on_behalf), space, false)?;
     }
 
-    pub fn unfollow_space(origin, space_id: T::SpaceId) {
+    pub fn unfollow_space(origin, on_behalf: T::SpaceId, space_id: T::SpaceId) {
       let follower = ensure_signed(origin)?;
 
       let ref mut space = Self::space_by_id(space_id).ok_or(MSG_SPACE_NOT_FOUND)?;
-      ensure!(Self::space_followed_by_account((follower.clone(), space_id)), MSG_ACCOUNT_IS_NOT_FOLLOWING_SPACE);
+      let mut follower_space = Self::space_by_id(on_behalf).ok_or(MSG_ON_BEHALF_SPACE_NOT_FOUND)?;
+      ensure!(Self::space_followed_by_space((on_behalf, space_id)), MSG_ACCOUNT_IS_NOT_FOLLOWING_SPACE);
 
-      let mut social_account = Self::social_account_by_id(follower.clone()).ok_or(MSG_SOCIAL_ACCOUNT_NOT_FOUND)?;
-      social_account.following_spaces_count = social_account.following_spaces_count
+      follower_space.following_count = follower_space.following_count
         .checked_sub(1)
         .ok_or(MSG_UNDERFLOW_UNFOLLOWING_SPACE)?;
       space.followers_count = space.followers_count.checked_sub(1).ok_or(MSG_UNDERFLOW_UNFOLLOWING_SPACE)?;
@@ -425,64 +382,17 @@ decl_module! {
       //   }
       // }
 
-      <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |space_ids| Self::vec_remove_on(space_ids, space_id));
-      <SpaceFollowers<T>>::mutate(space_id, |account_ids| Self::vec_remove_on(account_ids, follower.clone()));
-      <SpaceFollowedByAccount<T>>::remove((follower.clone(), space_id));
-      <SocialAccountById<T>>::insert(follower.clone(), social_account);
+      <SpacesFollowedBySpace<T>>::mutate(on_behalf, |space_ids| Self::vec_remove_on(space_ids, space_id));
+      <SpaceFollowers<T>>::mutate(space_id, |account_ids| Self::vec_remove_on(account_ids, on_behalf));
+      <SpaceFollowedBySpace<T>>::remove((on_behalf, space_id));
+      <SpaceById<T>>::insert(on_behalf, follower_space);
       <SpaceById<T>>::insert(space_id, space);
 
       Self::deposit_event(RawEvent::SpaceUnfollowed(follower.clone(), space_id));
     }
 
-    pub fn follow_account(origin, account: T::AccountId) {
-      let follower = ensure_signed(origin)?;
-
-      ensure!(follower != account, MSG_ACCOUNT_CANNOT_FOLLOW_ITSELF);
-      ensure!(!<AccountFollowedByAccount<T>>::exists((follower.clone(), account.clone())), MSG_ACCOUNT_IS_ALREADY_FOLLOWED);
-
-      let mut follower_account = Self::get_or_new_social_account(follower.clone());
-      let mut followed_account = Self::get_or_new_social_account(account.clone());
-
-      follower_account.following_accounts_count = follower_account.following_accounts_count
-        .checked_add(1).ok_or(MSG_OVERFLOW_FOLLOWING_ACCOUNT)?;
-      followed_account.followers_count = followed_account.followers_count
-        .checked_add(1).ok_or(MSG_OVERFLOW_FOLLOWING_ACCOUNT)?;
-
-      <SocialAccountById<T>>::insert(follower.clone(), follower_account);
-      <SocialAccountById<T>>::insert(account.clone(), followed_account);
-      <AccountsFollowedByAccount<T>>::mutate(follower.clone(), |ids| ids.push(account.clone()));
-      <AccountFollowers<T>>::mutate(account.clone(), |ids| ids.push(follower.clone()));
-      <AccountFollowedByAccount<T>>::insert((follower.clone(), account.clone()), true);
-
-      Self::deposit_event(RawEvent::AccountFollowed(follower, account));
-    }
-
-    pub fn unfollow_account(origin, account: T::AccountId) {
-      let follower = ensure_signed(origin)?;
-
-      ensure!(follower != account, MSG_ACCOUNT_CANNOT_UNFOLLOW_ITSELF);
-
-      let mut follower_account = Self::social_account_by_id(follower.clone()).ok_or(MSG_FOLLOWER_ACCOUNT_NOT_FOUND)?;
-      let mut followed_account = Self::social_account_by_id(account.clone()).ok_or(MSG_FOLLOWED_ACCOUNT_NOT_FOUND)?;
-
-      ensure!(<AccountFollowedByAccount<T>>::exists((follower.clone(), account.clone())), MSG_ACCOUNT_IS_NOT_FOLLOWED);
-
-      follower_account.following_accounts_count = follower_account.following_accounts_count
-        .checked_sub(1).ok_or(MSG_UNDERFLOW_UNFOLLOWING_ACCOUNT)?;
-      followed_account.followers_count = followed_account.followers_count
-        .checked_sub(1).ok_or(MSG_UNDERFLOW_UNFOLLOWING_ACCOUNT)?;
-
-      <SocialAccountById<T>>::insert(follower.clone(), follower_account);
-      <SocialAccountById<T>>::insert(account.clone(), followed_account);
-      <AccountsFollowedByAccount<T>>::mutate(follower.clone(), |account_ids| Self::vec_remove_on(account_ids, account.clone()));
-      <AccountFollowers<T>>::mutate(account.clone(), |account_ids| Self::vec_remove_on(account_ids, follower.clone()));
-      <AccountFollowedByAccount<T>>::remove((follower.clone(), account.clone()));
-
-      Self::deposit_event(RawEvent::AccountUnfollowed(follower, account));
-    }
-
     // TODO use PostUpdate to pass data?
-    pub fn create_post(origin, space_id: T::SpaceId, ipfs_hash: Vec<u8>, extension: PostExtension<T>) {
+    pub fn create_post(origin, on_behalf: T::SpaceId, space_id: T::SpaceId, ipfs_hash: Vec<u8>, extension: PostExtension<T>) {
       let owner = ensure_signed(origin)?;
 
       let mut space = Self::space_by_id(space_id).ok_or(MSG_SPACE_NOT_FOUND)?;
@@ -508,7 +418,7 @@ decl_module! {
       let new_post: Post<T> = Post {
         id: new_post_id,
         space_id,
-        created: Self::new_change(owner.clone()),
+        created: Self::new_change(Self::get_spaced_account(owner.clone(), on_behalf)),
         updated: None,
         extension,
         ipfs_hash,
@@ -529,7 +439,7 @@ decl_module! {
     }
 
     // TODO use CommentUpdate to pass data?
-    pub fn create_comment(origin, post_id: T::PostId, parent_id: Option<T::CommentId>, ipfs_hash: Vec<u8>) {
+    pub fn create_comment(origin, on_behalf: T::SpaceId, post_id: T::PostId, parent_id: Option<T::CommentId>, ipfs_hash: Vec<u8>) {
       let owner = ensure_signed(origin)?;
 
       let ref mut post = Self::post_by_id(post_id).ok_or(MSG_POST_NOT_FOUND)?;
@@ -540,7 +450,7 @@ decl_module! {
         id: comment_id,
         parent_id,
         post_id,
-        created: Self::new_change(owner.clone()),
+        created: Self::new_change(Self::get_spaced_account(owner.clone(), on_behalf)),
         updated: None,
         ipfs_hash,
         upvotes_count: 0,
@@ -569,16 +479,18 @@ decl_module! {
       Self::deposit_event(RawEvent::CommentCreated(owner.clone(), comment_id));
     }
 
-    pub fn create_post_reaction(origin, post_id: T::PostId, kind: ReactionKind) {
+    pub fn create_post_reaction(origin, on_behalf: T::SpaceId, post_id: T::PostId, kind: ReactionKind) {
       let owner = ensure_signed(origin)?;
 
+      let spaced_account = Self::get_spaced_account(owner.clone(), on_behalf);
+      ensure!(<SpaceById<T>>::exists(on_behalf), MSG_ON_BEHALF_SPACE_NOT_FOUND);
       ensure!(
-        !<PostReactionIdByAccount<T>>::exists((owner.clone(), post_id)),
+        !<PostReactionIdByAccount<T>>::exists((spaced_account.clone(), post_id)),
         MSG_ACCOUNT_ALREADY_REACTED_TO_POST
       );
 
       let ref mut post = Self::post_by_id(post_id).ok_or(MSG_POST_NOT_FOUND)?;
-      let reaction_id = Self::new_reaction(owner.clone(), kind.clone());
+      let reaction_id = Self::new_reaction(Self::get_spaced_account(owner.clone(), on_behalf), kind.clone());
       // let action: ScoringAction;
 
       match kind {
@@ -600,21 +512,23 @@ decl_module! {
       // }
 
       <ReactionIdsByPostId<T>>::mutate(post_id, |ids| ids.push(reaction_id));
-      <PostReactionIdByAccount<T>>::insert((owner.clone(), post_id), reaction_id);
+      <PostReactionIdByAccount<T>>::insert((spaced_account, post_id), reaction_id);
 
       Self::deposit_event(RawEvent::PostReactionCreated(owner.clone(), post_id, reaction_id));
     }
 
-    pub fn create_comment_reaction(origin, comment_id: T::CommentId, kind: ReactionKind) {
+    pub fn create_comment_reaction(origin, on_behalf: T::SpaceId, comment_id: T::CommentId, kind: ReactionKind) {
       let owner = ensure_signed(origin)?;
 
+      let spaced_account = Self::get_spaced_account(owner.clone(), on_behalf);
+      ensure!(<SpaceById<T>>::exists(on_behalf), MSG_ON_BEHALF_SPACE_NOT_FOUND);
       ensure!(
-        !<CommentReactionIdByAccount<T>>::exists((owner.clone(), comment_id)),
+        !<CommentReactionIdByAccount<T>>::exists((spaced_account.clone(), comment_id)),
         MSG_ACCOUNT_ALREADY_REACTED_TO_COMMENT
       );
 
       let ref mut comment = Self::comment_by_id(comment_id).ok_or(MSG_COMMENT_NOT_FOUND)?;
-      let reaction_id = Self::new_reaction(owner.clone(), kind.clone());
+      let reaction_id = Self::new_reaction(Self::get_spaced_account(owner.clone(), on_behalf), kind.clone());
       // let action: ScoringAction;
 
       match kind {
@@ -635,84 +549,15 @@ decl_module! {
       // }
 
       <ReactionIdsByCommentId<T>>::mutate(comment_id, |ids| ids.push(reaction_id));
-      <CommentReactionIdByAccount<T>>::insert((owner.clone(), comment_id), reaction_id);
+      <CommentReactionIdByAccount<T>>::insert((spaced_account, comment_id), reaction_id);
 
       Self::deposit_event(RawEvent::CommentReactionCreated(owner.clone(), comment_id, reaction_id));
     }
 
-    pub fn create_profile(origin, username: Vec<u8>, ipfs_hash: Vec<u8>) {
-      let owner = ensure_signed(origin)?;
-
-      let mut social_account = Self::get_or_new_social_account(owner.clone());
-      ensure!(social_account.profile.is_none(), MSG_PROFILE_ALREADY_EXISTS);
-      Self::is_username_valid(username.clone())?;
-      Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
-
-      social_account.profile = Some(
-        Profile {
-          created: Self::new_change(owner.clone()),
-          updated: None,
-          username: username.clone(),
-          ipfs_hash,
-          edit_history: vec![]
-        }
-      );
-      <AccountByProfileUsername<T>>::insert(username.clone(), owner.clone());
-      <SocialAccountById<T>>::insert(owner.clone(), social_account.clone());
-
-      Self::deposit_event(RawEvent::ProfileCreated(owner.clone()));
-    }
-
-    pub fn update_profile(origin, update: ProfileUpdate) {
-      let owner = ensure_signed(origin)?;
-
-      let has_updates =
-        update.username.is_some() ||
-        update.ipfs_hash.is_some();
-      
-      ensure!(has_updates, MSG_NOTHING_TO_UPDATE_IN_PROFILE);
-
-      let mut social_account = Self::social_account_by_id(owner.clone()).ok_or(MSG_SOCIAL_ACCOUNT_NOT_FOUND)?;
-      let mut profile = social_account.profile.ok_or(MSG_PROFILE_DOESNT_EXIST)?;
-      let mut is_update_applied = false;
-      let mut new_history_record = ProfileHistoryRecord {
-        edited: Self::new_change(owner.clone()),
-        old_data: ProfileUpdate {username: None, ipfs_hash: None}
-      };
-
-      if let Some(ipfs_hash) = update.ipfs_hash {
-        if ipfs_hash != profile.ipfs_hash {
-          Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
-          new_history_record.old_data.ipfs_hash = Some(profile.ipfs_hash);
-          profile.ipfs_hash = ipfs_hash;
-          is_update_applied = true;
-        }
-      }
-
-      if let Some(username) = update.username {
-        if username != profile.username {
-          Self::is_username_valid(username.clone())?;
-          <AccountByProfileUsername<T>>::remove(profile.username.clone());
-          <AccountByProfileUsername<T>>::insert(username.clone(), owner.clone());
-          new_history_record.old_data.username = Some(profile.username);
-          profile.username = username;
-          is_update_applied = true;
-        }
-      }
-
-      if is_update_applied {
-        profile.updated = Some(Self::new_change(owner.clone()));
-        profile.edit_history.push(new_history_record);
-        social_account.profile = Some(profile);
-        <SocialAccountById<T>>::insert(owner.clone(), social_account);
-
-        Self::deposit_event(RawEvent::ProfileUpdated(owner.clone()));
-      }
-    }
-
-    pub fn update_space(origin, space_id: T::SpaceId, update: SpaceUpdate) {
+    pub fn update_space(origin, on_behalf: T::SpaceId, space_id: T::SpaceId, update: SpaceUpdate) {
       let owner = ensure_signed(origin)?;
       
+      let spaced_account = Self::get_spaced_account(owner.clone(), on_behalf);
       let has_updates = 
         // update.writers.is_some() ||
         update.handle.is_some() ||
@@ -723,11 +568,11 @@ decl_module! {
       let mut space = Self::space_by_id(space_id).ok_or(MSG_SPACE_NOT_FOUND)?;
 
       // TODO ensure: space writers also should be able to edit this space:
-      ensure!(owner == space.created.account, MSG_ONLY_SPACE_OWNER_CAN_UPDATE_SPACE);
+      ensure!(spaced_account == space.created.on_behalf, MSG_ONLY_SPACE_OWNER_CAN_UPDATE_SPACE);
 
       let mut fields_updated = 0;
       let mut new_history_record = SpaceHistoryRecord {
-        edited: Self::new_change(owner.clone()),
+        edited: Self::new_change(spaced_account.clone()),
         old_data: SpaceUpdate {/*writers: None, */handle: None, ipfs_hash: None}
       };
 
@@ -769,16 +614,17 @@ decl_module! {
 
       // Update this space only if at least one field should be updated:
       if fields_updated > 0 {
-        space.updated = Some(Self::new_change(owner.clone()));
+        space.updated = Some(Self::new_change(spaced_account.clone()));
         space.edit_history.push(new_history_record);
         <SpaceById<T>>::insert(space_id, space);
         Self::deposit_event(RawEvent::SpaceUpdated(owner.clone(), space_id));
       }
     }
     
-    pub fn update_post(origin, post_id: T::PostId, update: PostUpdate<T>) {
+    pub fn update_post(origin, on_behalf: T::SpaceId, post_id: T::PostId, update: PostUpdate<T>) {
       let owner = ensure_signed(origin)?;
       
+      let spaced_account = Self::get_spaced_account(owner.clone(), on_behalf);
       let has_updates = 
         update.space_id.is_some() ||
         update.ipfs_hash.is_some();
@@ -788,11 +634,11 @@ decl_module! {
       let mut post = Self::post_by_id(post_id).ok_or(MSG_POST_NOT_FOUND)?;
 
       // TODO ensure: space writers also should be able to edit this post:
-      ensure!(owner == post.created.account, MSG_ONLY_POST_OWNER_CAN_UPDATE_POST);
+      ensure!(spaced_account == post.created.on_behalf, MSG_ONLY_POST_OWNER_CAN_UPDATE_POST);
 
       let mut fields_updated = 0;
       let mut new_history_record = PostHistoryRecord {
-        edited: Self::new_change(owner.clone()),
+        edited: Self::new_change(spaced_account.clone()),
         old_data: PostUpdate {space_id: None, ipfs_hash: None}
       };
 
@@ -823,7 +669,7 @@ decl_module! {
 
       // Update this post only if at least one field should be updated:
       if fields_updated > 0 {
-        post.updated = Some(Self::new_change(owner.clone()));
+        post.updated = Some(Self::new_change(spaced_account.clone()));
         post.edit_history.push(new_history_record);
         <PostById<T>>::insert(post_id, post);
 
@@ -831,45 +677,47 @@ decl_module! {
       }
     }
     
-    pub fn update_comment(origin, comment_id: T::CommentId, update: CommentUpdate) {
+    pub fn update_comment(origin, on_behalf: T::SpaceId, comment_id: T::CommentId, update: CommentUpdate) {
       let owner = ensure_signed(origin)?;
 
+      let spaced_account = Self::get_spaced_account(owner.clone(), on_behalf);
       let mut comment = Self::comment_by_id(comment_id).ok_or(MSG_COMMENT_NOT_FOUND)?;
-      ensure!(owner == comment.created.account, MSG_ONLY_COMMENT_AUTHOR_CAN_UPDATE_COMMENT);
+      ensure!(spaced_account == comment.created.on_behalf, MSG_ONLY_COMMENT_AUTHOR_CAN_UPDATE_COMMENT);
 
       let ipfs_hash = update.ipfs_hash;
       ensure!(ipfs_hash != comment.ipfs_hash, MSG_NEW_COMMENT_HASH_DO_NOT_DIFFER);
       Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
       let new_history_record = CommentHistoryRecord {
-        edited: Self::new_change(owner.clone()),
+        edited: Self::new_change(spaced_account.clone()),
         old_data: CommentUpdate {ipfs_hash: comment.ipfs_hash}
       };
       comment.edit_history.push(new_history_record);
 
       comment.ipfs_hash = ipfs_hash;
-      comment.updated = Some(Self::new_change(owner.clone()));
+      comment.updated = Some(Self::new_change(spaced_account.clone()));
       <CommentById<T>>::insert(comment_id, comment);
 
       Self::deposit_event(RawEvent::CommentUpdated(owner.clone(), comment_id));
     }
 
-    pub fn update_post_reaction(origin, post_id: T::PostId, reaction_id: T::ReactionId, new_kind: ReactionKind) {
+    pub fn update_post_reaction(origin, on_behalf: T::SpaceId, post_id: T::PostId, reaction_id: T::ReactionId, new_kind: ReactionKind) {
       let owner = ensure_signed(origin)?;
 
+      let spaced_account = Self::get_spaced_account(owner.clone(), on_behalf);
       ensure!(
-        <PostReactionIdByAccount<T>>::exists((owner.clone(), post_id)),
+        <PostReactionIdByAccount<T>>::exists((spaced_account.clone(), post_id)),
         MSG_ACCOUNT_HAS_NOT_REACTED_TO_POST
       );
 
       let mut reaction = Self::reaction_by_id(reaction_id).ok_or(MSG_REACTION_NOT_FOUND)?;
       let ref mut post = Self::post_by_id(post_id).ok_or(MSG_POST_NOT_FOUND)?;
 
-      ensure!(owner == reaction.created.account, MSG_ONLY_REACTION_OWNER_CAN_UPDATE_REACTION);
+      ensure!(spaced_account == reaction.created.on_behalf, MSG_ONLY_REACTION_OWNER_CAN_UPDATE_REACTION);
       ensure!(reaction.kind != new_kind, MSG_NEW_REACTION_KIND_DO_NOT_DIFFER);
 
       reaction.kind = new_kind;
-      reaction.updated = Some(Self::new_change(owner.clone()));
+      reaction.updated = Some(Self::new_change(spaced_account.clone()));
       // let action: ScoringAction;
       // let action_to_cancel: ScoringAction;
       
@@ -896,22 +744,23 @@ decl_module! {
       Self::deposit_event(RawEvent::PostReactionUpdated(owner.clone(), post_id, reaction_id));
     }
 
-    pub fn update_comment_reaction(origin, comment_id: T::CommentId, reaction_id: T::ReactionId, new_kind: ReactionKind) {
+    pub fn update_comment_reaction(origin, on_behalf: T::SpaceId, comment_id: T::CommentId, reaction_id: T::ReactionId, new_kind: ReactionKind) {
       let owner = ensure_signed(origin)?;
 
+      let spaced_account = Self::get_spaced_account(owner.clone(), on_behalf);
       ensure!(
-        <CommentReactionIdByAccount<T>>::exists((owner.clone(), comment_id)),
+        <CommentReactionIdByAccount<T>>::exists((spaced_account.clone(), comment_id)),
         MSG_ACCOUNT_HAS_NOT_REACTED_TO_COMMENT
       );
 
       let mut reaction = Self::reaction_by_id(reaction_id).ok_or(MSG_REACTION_NOT_FOUND)?;
       let ref mut comment = Self::comment_by_id(comment_id).ok_or(MSG_COMMENT_NOT_FOUND)?;
 
-      ensure!(owner == reaction.created.account, MSG_ONLY_REACTION_OWNER_CAN_UPDATE_REACTION);
+      ensure!(spaced_account == reaction.created.on_behalf, MSG_ONLY_REACTION_OWNER_CAN_UPDATE_REACTION);
       ensure!(reaction.kind != new_kind, MSG_NEW_REACTION_KIND_DO_NOT_DIFFER);
 
       reaction.kind = new_kind;
-      reaction.updated = Some(Self::new_change(owner.clone()));
+      reaction.updated = Some(Self::new_change(spaced_account.clone()));
       // let action: ScoringAction;
       // let action_to_cancel: ScoringAction;
       
@@ -947,11 +796,12 @@ decl_module! {
     
     // TODO fn delete_comment(origin, comment_id: T::CommentId) {}
 
-    pub fn delete_post_reaction(origin, post_id: T::PostId, reaction_id: T::ReactionId) {
+    pub fn delete_post_reaction(origin, on_behalf: T::SpaceId, post_id: T::PostId, reaction_id: T::ReactionId) {
       let owner = ensure_signed(origin)?;
 
+      let spaced_account = Self::get_spaced_account(owner.clone(), on_behalf);
       ensure!(
-        <PostReactionIdByAccount<T>>::exists((owner.clone(), post_id)),
+        <PostReactionIdByAccount<T>>::exists((spaced_account.clone(), post_id)),
         MSG_NO_POST_REACTION_BY_ACCOUNT_TO_DELETE
       );
       
@@ -959,7 +809,7 @@ decl_module! {
       let reaction = Self::reaction_by_id(reaction_id).ok_or(MSG_REACTION_NOT_FOUND)?;
       let ref mut post = Self::post_by_id(post_id).ok_or(MSG_POST_NOT_FOUND)?;
 
-      ensure!(owner == reaction.created.account, MSG_ONLY_REACTION_OWNER_CAN_UPDATE_REACTION);
+      ensure!(spaced_account == reaction.created.on_behalf, MSG_ONLY_REACTION_OWNER_CAN_UPDATE_REACTION);
 
       match reaction.kind {
         ReactionKind::Upvote => {
@@ -977,16 +827,17 @@ decl_module! {
       <PostById<T>>::insert(post_id, post);
       <ReactionById<T>>::remove(reaction_id);
       <ReactionIdsByPostId<T>>::mutate(post_id, |ids| Self::vec_remove_on(ids, reaction_id));
-      <PostReactionIdByAccount<T>>::remove((owner.clone(), post_id));
+      <PostReactionIdByAccount<T>>::remove((spaced_account.clone(), post_id));
 
       Self::deposit_event(RawEvent::PostReactionDeleted(owner.clone(), post_id, reaction_id));
     }
 
-    pub fn delete_comment_reaction(origin, comment_id: T::CommentId, reaction_id: T::ReactionId) {
+    pub fn delete_comment_reaction(origin, on_behalf: T::SpaceId, comment_id: T::CommentId, reaction_id: T::ReactionId) {
       let owner = ensure_signed(origin)?;
 
+      let spaced_account = Self::get_spaced_account(owner.clone(), on_behalf);
       ensure!(
-        <CommentReactionIdByAccount<T>>::exists((owner.clone(), comment_id)),
+        <CommentReactionIdByAccount<T>>::exists((spaced_account.clone(), comment_id)),
         MSG_NO_COMMENT_REACTION_BY_ACCOUNT_TO_DELETE
       );
       
@@ -994,7 +845,7 @@ decl_module! {
       let reaction = Self::reaction_by_id(reaction_id).ok_or(MSG_REACTION_NOT_FOUND)?;
       let ref mut comment = Self::comment_by_id(comment_id).ok_or(MSG_COMMENT_NOT_FOUND)?;
       
-      ensure!(owner == reaction.created.account, MSG_ONLY_REACTION_OWNER_CAN_UPDATE_REACTION);
+      ensure!(spaced_account == reaction.created.on_behalf, MSG_ONLY_REACTION_OWNER_CAN_UPDATE_REACTION);
 
       match reaction.kind {
         ReactionKind::Upvote => {
@@ -1011,7 +862,7 @@ decl_module! {
       <CommentById<T>>::insert(comment_id, comment);
       <ReactionIdsByCommentId<T>>::mutate(comment_id, |ids| Self::vec_remove_on(ids, reaction_id));
       <ReactionById<T>>::remove(reaction_id);
-      <CommentReactionIdByAccount<T>>::remove((owner.clone(), comment_id));
+      <CommentReactionIdByAccount<T>>::remove((spaced_account.clone(), comment_id));
 
       Self::deposit_event(RawEvent::CommentReactionDeleted(owner.clone(), comment_id, reaction_id));
     }

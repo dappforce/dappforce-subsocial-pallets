@@ -1,7 +1,9 @@
 pub const MSG_SPACE_NOT_FOUND: &str = "Space was not found by id";
+pub const MSG_ON_BEHALF_SPACE_NOT_FOUND: &str = "The space on whose behalf you are acting was not found by id";
 pub const MSG_SPACE_HANDLE_IS_TOO_SHORT: &str = "Space handle is too short";
 pub const MSG_SPACE_HANDLE_IS_TOO_LONG: &str = "Space handle is too long";
 pub const MSG_SPACE_HANDLE_IS_NOT_UNIQUE: &str = "Space handle is not unique";
+pub const MSG_SPACE_HANDLE_NOT_ALPHANUMERIC: &str = "Space handle is not alphanumeric";
 pub const MSG_NOTHING_TO_UPDATE_IN_SPACE: &str = "Nothing to update in a space";
 pub const MSG_ONLY_SPACE_OWNER_CAN_UPDATE_SPACE: &str = "Only a space owner can update their space";
 
@@ -70,7 +72,3 @@ pub const MSG_OVERFLOW_COMMENT_SHARES_BY_ACCOUNT: &str = "Overflow shares by acc
 pub const MSG_PROFILE_ALREADY_EXISTS: &str = "Profile for this account already exists";
 pub const MSG_NOTHING_TO_UPDATE_IN_PROFILE: &str = "Nothing to update in a profile";
 pub const MSG_PROFILE_DOESNT_EXIST: &str = "Account has no profile yet";
-pub const MSG_USERNAME_IS_BUSY: &str = "Profile username is busy";
-pub const MSG_USERNAME_TOO_SHORT: &str = "Username is too short";
-pub const MSG_USERNAME_TOO_LONG: &str = "Username is too long";
-pub const MSG_USERNAME_NOT_ALPHANUMERIC: &str = "Username is not alphanumeric";

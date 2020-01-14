@@ -14,20 +14,20 @@ impl<T: Trait> Module<T> {
     Ok(())
   }
 
-  pub fn new_change(account: T::AccountId) -> Change<T> {
+  pub fn new_change(on_behalf: SpacedAccount<T>) -> Change<T> {
     Change {
-      account,
+      on_behalf,
       block: <system::Module<T>>::block_number(),
       time: <timestamp::Module<T>>::now(),
     }
   }
 
   // TODO: maybe don't add reaction in storage before checks in 'create_reaction' are done?
-  pub fn new_reaction(account: T::AccountId, kind: ReactionKind) -> T::ReactionId {
+  pub fn new_reaction(on_behalf: SpacedAccount<T>, kind: ReactionKind) -> T::ReactionId {
     let reaction_id = Self::next_reaction_id();
     let new_reaction: Reaction<T> = Reaction {
       id: reaction_id,
-      created: Self::new_change(account),
+      created: Self::new_change(on_behalf),
       updated: None,
       kind
     };
@@ -38,19 +38,26 @@ impl<T: Trait> Module<T> {
     reaction_id
   }
 
+  // TODO: What technically means when space is following itself?
   pub fn add_space_follower_and_insert_space(
-    follower: T::AccountId,
+    on_behalf: SpacedAccount<T>,
     space: &mut Space<T>,
     is_new_space: bool
   ) -> Result {
 
     let space_id = space.id;
-    let mut social_account = Self::get_or_new_social_account(follower.clone());
-    social_account.following_spaces_count = social_account.following_spaces_count
-      .checked_add(1)
-      .ok_or(MSG_OVERFLOW_FOLLOWING_SPACE)?;
-
+    
     space.followers_count = space.followers_count.checked_add(1).ok_or(MSG_OVERFLOW_FOLLOWING_SPACE)?;
+    if let Some(following_space_id) = on_behalf.space {
+      let mut following_space = Self::space_by_id(following_space_id).ok_or(MSG_ON_BEHALF_SPACE_NOT_FOUND)?;
+      following_space.following_count = following_space.following_count.checked_add(1).ok_or(MSG_OVERFLOW_FOLLOWING_SPACE)?;
+
+      <SpaceById<T>>::insert(following_space_id, following_space);
+      <SpaceById<T>>::insert(space_id, space);
+      <SpacesFollowedBySpace<T>>::mutate(following_space_id, |ids| ids.push(space_id));
+      <SpaceFollowers<T>>::mutate(space_id, |ids| ids.push(following_space_id));
+      <SpaceFollowedBySpace<T>>::insert((following_space_id, space_id), true);
+    }
     /*
     if space.created.account != follower {
       let author = space.created.account.clone();
@@ -60,33 +67,13 @@ impl<T: Trait> Module<T> {
     }
     */
 
-    <SpaceById<T>>::insert(space_id, space);
-    <SocialAccountById<T>>::insert(follower.clone(), social_account.clone());
-    <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |ids| ids.push(space_id));
-    <SpaceFollowers<T>>::mutate(space_id, |ids| ids.push(follower.clone()));
-    <SpaceFollowedByAccount<T>>::insert((follower.clone(), space_id), true);
-
     if is_new_space {
-      Self::deposit_event(RawEvent::SpaceCreated(follower.clone(), space_id));
+      Self::deposit_event(RawEvent::SpaceCreated(on_behalf.account.clone(), space_id));
     }
 
-    Self::deposit_event(RawEvent::SpaceFollowed(follower, space_id));
+    Self::deposit_event(RawEvent::SpaceFollowed(on_behalf.account, space_id));
     
     Ok(())
-  }
-
-  pub fn get_or_new_social_account(account: T::AccountId) -> SocialAccount<T> {
-    if let Some(social_account) = Self::social_account_by_id(account) {
-      social_account
-    } else {
-      SocialAccount {
-        followers_count: 0,
-        following_accounts_count: 0,
-        following_spaces_count: 0,
-        reputation: 1,
-        profile: None
-      }
-    }
   }
 
   pub fn vec_remove_on<F: PartialEq>(vector: &mut Vec<F>, element: F) {
@@ -237,11 +224,11 @@ impl<T: Trait> Module<T> {
   }
   */
 
-  pub fn is_username_valid(username: Vec<u8>) -> Result {
-    ensure!(Self::account_by_profile_username(username.clone()).is_none(), MSG_USERNAME_IS_BUSY);
-    ensure!(username.len() >= Self::username_min_len() as usize, MSG_USERNAME_TOO_SHORT);
-    ensure!(username.len() <= Self::username_max_len() as usize, MSG_USERNAME_TOO_LONG);
-    ensure!(username.iter().all(|&x| x.is_ascii_alphanumeric()), MSG_USERNAME_NOT_ALPHANUMERIC);
+  pub fn is_space_handle_valid(handle: Vec<u8>) -> Result {
+    ensure!(Self::space_id_by_handle(handle.clone()).is_none(), MSG_SPACE_HANDLE_IS_NOT_UNIQUE);
+    ensure!(handle.len() >= Self::handle_min_len() as usize, MSG_SPACE_HANDLE_IS_TOO_SHORT);
+    ensure!(handle.len() <= Self::handle_max_len() as usize, MSG_SPACE_HANDLE_IS_TOO_LONG);
+    ensure!(handle.iter().all(|&x| x.is_ascii_alphanumeric()), MSG_SPACE_HANDLE_NOT_ALPHANUMERIC);
 
     Ok(())
   }
@@ -291,5 +278,12 @@ impl<T: Trait> Module<T> {
     Self::deposit_event(RawEvent::CommentShared(account, original_comment_id));
 
     Ok(())
+  }
+
+  pub fn get_spaced_account(account: T::AccountId, space: T::SpaceId) -> SpacedAccount<T> {
+    SpacedAccount {
+      account,
+      space: Some(space)
+    }
   }
 }
