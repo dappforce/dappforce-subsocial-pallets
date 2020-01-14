@@ -48,6 +48,7 @@ pub const MSG_FOLLOWED_ACCOUNT_NOT_FOUND: &str = "Followed social account was no
 
 pub const MSG_IPFS_IS_INCORRECT: &str = "IPFS-hash is not correct";
 
+/*
 pub const MSG_OUT_OF_BOUNDS_UPDATING_SPACE_SCORE: &str = "Out of bounds updating space score";
 pub const MSG_OUT_OF_BOUNDS_REVERTING_SPACE_SCORE: &str = "Out of bounds reverting space score";
 pub const MSG_OUT_OF_BOUNDS_UPDATING_POST_SCORE: &str = "Out of bounds updating post score";
@@ -56,6 +57,7 @@ pub const MSG_OUT_OF_BOUNDS_UPDATING_COMMENT_SCORE: &str = "Out of bounds updati
 pub const MSG_OUT_OF_BOUNDS_REVERTING_COMMENT_SCORE: &str = "Out of bounds reverting comment score";
 pub const MSG_OUT_OF_BOUNDS_UPDATING_ACCOUNT_REPUTATION: &str = "Out of bounds updating social account reputation";
 pub const MSG_REPUTATION_DIFF_NOT_FOUND: &str = "Scored account reputation difference by account and action not found";
+*/
 
 pub const MSG_ORIGINAL_POST_NOT_FOUND: &str = "Original post not found when sharing";
 pub const MSG_OVERFLOW_TOTAL_SHARES_SHARING_POST: &str = "Overflow total shares counter when sharing post";

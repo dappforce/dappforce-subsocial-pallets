@@ -51,12 +51,14 @@ impl<T: Trait> Module<T> {
       .ok_or(MSG_OVERFLOW_FOLLOWING_SPACE)?;
 
     space.followers_count = space.followers_count.checked_add(1).ok_or(MSG_OVERFLOW_FOLLOWING_SPACE)?;
+    /*
     if space.created.account != follower {
       let author = space.created.account.clone();
-      let score_diff = Self::get_score_diff(social_account.reputation, ScoringAction::FollowSpace);
+      let score_diff = Self::get_score_diff(space.score, ScoringAction::FollowSpace);
       space.score = space.score.checked_add(score_diff as i32).ok_or(MSG_OUT_OF_BOUNDS_UPDATING_SPACE_SCORE)?;
       Self::change_social_account_reputation(author.clone(), follower.clone(), score_diff, ScoringAction::FollowSpace)?;
     }
+    */
 
     <SpaceById<T>>::insert(space_id, space);
     <SocialAccountById<T>>::insert(follower.clone(), social_account.clone());
@@ -93,6 +95,7 @@ impl<T: Trait> Module<T> {
     }
   }
 
+  /*
   pub fn change_post_score(account: T::AccountId, post: &mut Post<T>, action: ScoringAction) -> Result {
     let social_account = Self::get_or_new_social_account(account.clone());
     <SocialAccountById<T>>::insert(account.clone(), social_account.clone());
@@ -232,6 +235,7 @@ impl<T: Trait> Module<T> {
     assert!(x > 0);
     Self::num_bits::<u32>() as u32 - x.leading_zeros() - 1
   }
+  */
 
   pub fn is_username_valid(username: Vec<u8>) -> Result {
     ensure!(Self::account_by_profile_username(username.clone()).is_none(), MSG_USERNAME_IS_BUSY);
@@ -256,9 +260,9 @@ impl<T: Trait> Module<T> {
     let mut shares_by_account = Self::post_shares_by_account((account.clone(), original_post_id));
     shares_by_account = shares_by_account.checked_add(1).ok_or(MSG_OVERFLOW_POST_SHARES_BY_ACCOUNT)?;
 
-    if shares_by_account == 1 {
-      Self::change_post_score(account.clone(), original_post, ScoringAction::SharePost)?;
-    }
+    // if shares_by_account == 1 {
+    //   Self::change_post_score(account.clone(), original_post, ScoringAction::SharePost)?;
+    // }
 
     <PostById<T>>::insert(original_post_id, original_post);
     <PostSharesByAccount<T>>::insert((account.clone(), original_post_id), shares_by_account); // TODO Maybe use mutate instead?
@@ -277,9 +281,9 @@ impl<T: Trait> Module<T> {
     let mut shares_count = Self::comment_shares_by_account((account.clone(), original_comment_id));
     shares_count = shares_count.checked_add(1).ok_or(MSG_OVERFLOW_COMMENT_SHARES_BY_ACCOUNT)?;
 
-    if shares_count == 1 {
-      Self::change_comment_score(account.clone(), original_comment, ScoringAction::ShareComment)?;
-    }
+    // if shares_count == 1 {
+    //   Self::change_comment_score(account.clone(), original_comment, ScoringAction::ShareComment)?;
+    // }
 
     <CommentSharesByAccount<T>>::insert((account.clone(), original_comment_id), shares_count); // TODO Maybe use mutate instead?
     <SharedPostIdsByOriginalCommentId<T>>::mutate(original_comment_id, |ids| ids.push(shared_post_id));

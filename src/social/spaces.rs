@@ -215,6 +215,7 @@ pub struct ProfileHistoryRecord<T: Trait> {
   pub old_data: ProfileUpdate,
 }
 
+/*
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 #[derive(Clone, Copy, Encode, Decode, PartialEq, Eq)]
 pub enum ScoringAction {
@@ -234,6 +235,7 @@ impl Default for ScoringAction {
     ScoringAction::FollowAccount
   }
 }
+*/
 
 decl_storage! {
   trait Store for Module<T: Trait> as Spaces {
@@ -250,6 +252,7 @@ decl_storage! {
     pub PostMaxLen get(post_max_len): u32 = DEFAULT_POST_MAX_LEN;
     pub CommentMaxLen get(comment_max_len): u32 = DEFAULT_COMMENT_MAX_LEN;
 
+    /*
     pub UpvotePostActionWeight get (upvote_post_action_weight): i16 = DEFAULT_UPVOTE_POST_ACTION_WEIGHT;
     pub DownvotePostActionWeight get (downvote_post_action_weight): i16 = DEFAULT_DOWNVOTE_POST_ACTION_WEIGHT;
     pub SharePostActionWeight get (share_post_action_weight): i16 = DEFAULT_SHARE_POST_ACTION_WEIGHT;
@@ -258,7 +261,7 @@ decl_storage! {
     pub DownvoteCommentActionWeight get (downvote_comment_action_weight): i16 = DEFAULT_DOWNVOTE_COMMENT_ACTION_WEIGHT;
     pub ShareCommentActionWeight get (share_comment_action_weight): i16 = DEFAULT_SHARE_COMMENT_ACTION_WEIGHT;
     pub FollowSpaceActionWeight get (follow_space_action_weight): i16 = DEFAULT_FOLLOW_SPACE_ACTION_WEIGHT;
-    pub FollowAccountActionWeight get (follow_account_action_weight): i16 = DEFAULT_FOLLOW_ACCOUNT_ACTION_WEIGHT;
+    */
 
     pub SpaceById get(space_by_id): map T::SpaceId => Option<Space<T>>;
     pub PostById get(post_by_id): map T::PostId => Option<Post<T>>;
@@ -290,9 +293,9 @@ decl_storage! {
     pub NextCommentId get(next_comment_id): T::CommentId = T::CommentId::sa(1);
     pub NextReactionId get(next_reaction_id): T::ReactionId = T::ReactionId::sa(1);
 
-    pub AccountReputationDiffByAccount get(account_reputation_diff_by_account): map (T::AccountId, T::AccountId, ScoringAction) => Option<i16>; // TODO shorten name (?refactor)
-    pub PostScoreByAccount get(post_score_by_account): map (T::AccountId, T::PostId, ScoringAction) => Option<i16>;
-    pub CommentScoreByAccount get(comment_score_by_account): map (T::AccountId, T::CommentId, ScoringAction) => Option<i16>;
+    // pub AccountReputationDiffByAccount get(account_reputation_diff_by_account): map (T::AccountId, T::AccountId, ScoringAction) => Option<i16>; // TODO shorten name (?refactor)
+    // pub PostScoreByAccount get(post_score_by_account): map (T::AccountId, T::PostId, ScoringAction) => Option<i16>;
+    // pub CommentScoreByAccount get(comment_score_by_account): map (T::AccountId, T::CommentId, ScoringAction) => Option<i16>;
 
     pub PostSharesByAccount get(post_shares_by_account): map (T::AccountId, T::PostId) => u16;
     pub SharedPostIdsByOriginalPostId get(shared_post_ids_by_original_post_id): map T::PostId => Vec<T::PostId>;
@@ -319,7 +322,7 @@ decl_event! {
     SpaceFollowed(AccountId, SpaceId),
     SpaceUnfollowed(AccountId, SpaceId),
 
-    AccountReputationChanged(AccountId, ScoringAction, u32),
+    // AccountReputationChanged(AccountId, ScoringAction, u32),
 
     AccountFollowed(AccountId, AccountId),
     AccountUnfollowed(AccountId, AccountId),
@@ -414,13 +417,13 @@ decl_module! {
         .ok_or(MSG_UNDERFLOW_UNFOLLOWING_SPACE)?;
       space.followers_count = space.followers_count.checked_sub(1).ok_or(MSG_UNDERFLOW_UNFOLLOWING_SPACE)?;
 
-      if space.created.account != follower {
-        let author = space.created.account.clone();
-        if let Some(score_diff) = Self::account_reputation_diff_by_account((follower.clone(), author.clone(), ScoringAction::FollowSpace)) {
-          space.score = space.score.checked_sub(score_diff as i32).ok_or(MSG_OUT_OF_BOUNDS_UPDATING_SPACE_SCORE)?;
-          Self::change_social_account_reputation(author.clone(), follower.clone(), score_diff * -1, ScoringAction::FollowSpace)?;
-        }
-      }
+      // if space.created.account != follower {
+      //   let author = space.created.account.clone();
+      //   if let Some(score_diff) = Self::account_reputation_diff_by_account((follower.clone(), author.clone(), ScoringAction::FollowSpace)) {
+      //     space.score = space.score.checked_sub(score_diff as i32).ok_or(MSG_OUT_OF_BOUNDS_UPDATING_SPACE_SCORE)?;
+      //     Self::change_social_account_reputation(author.clone(), follower.clone(), score_diff * -1, ScoringAction::FollowSpace)?;
+      //   }
+      // }
 
       <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |space_ids| Self::vec_remove_on(space_ids, space_id));
       <SpaceFollowers<T>>::mutate(space_id, |account_ids| Self::vec_remove_on(account_ids, follower.clone()));
@@ -445,11 +448,6 @@ decl_module! {
       followed_account.followers_count = followed_account.followers_count
         .checked_add(1).ok_or(MSG_OVERFLOW_FOLLOWING_ACCOUNT)?;
 
-      Self::change_social_account_reputation(account.clone(), follower.clone(),
-        Self::get_score_diff(follower_account.reputation.clone(), ScoringAction::FollowAccount),
-        ScoringAction::FollowAccount
-      )?;
-
       <SocialAccountById<T>>::insert(follower.clone(), follower_account);
       <SocialAccountById<T>>::insert(account.clone(), followed_account);
       <AccountsFollowedByAccount<T>>::mutate(follower.clone(), |ids| ids.push(account.clone()));
@@ -473,14 +471,6 @@ decl_module! {
         .checked_sub(1).ok_or(MSG_UNDERFLOW_UNFOLLOWING_ACCOUNT)?;
       followed_account.followers_count = followed_account.followers_count
         .checked_sub(1).ok_or(MSG_UNDERFLOW_UNFOLLOWING_ACCOUNT)?;
-
-      let reputation_diff = Self::account_reputation_diff_by_account(
-        (follower.clone(), account.clone(), ScoringAction::FollowAccount)
-      ).ok_or(MSG_REPUTATION_DIFF_NOT_FOUND)?;
-      Self::change_social_account_reputation(account.clone(), follower.clone(),
-        reputation_diff,
-        ScoringAction::FollowAccount
-      )?;
 
       <SocialAccountById<T>>::insert(follower.clone(), follower_account);
       <SocialAccountById<T>>::insert(account.clone(), followed_account);
@@ -563,7 +553,7 @@ decl_module! {
 
       post.comments_count = post.comments_count.checked_add(1).ok_or(MSG_OVERFLOW_ADDING_COMMENT_ON_POST)?;
 
-      Self::change_post_score(owner.clone(), post, ScoringAction::CreateComment)?;
+      // Self::change_post_score(owner.clone(), post, ScoringAction::CreateComment)?;
 
       if let Some(id) = parent_id {
         let mut parent_comment = Self::comment_by_id(id).ok_or(MSG_UNKNOWN_PARENT_COMMENT)?;
@@ -589,25 +579,25 @@ decl_module! {
 
       let ref mut post = Self::post_by_id(post_id).ok_or(MSG_POST_NOT_FOUND)?;
       let reaction_id = Self::new_reaction(owner.clone(), kind.clone());
-      let action: ScoringAction;
+      // let action: ScoringAction;
 
       match kind {
         ReactionKind::Upvote => {
           post.upvotes_count = post.upvotes_count.checked_add(1).ok_or(MSG_OVERFLOW_UPVOTING_POST)?;
-          action = ScoringAction::UpvotePost;
+          // action = ScoringAction::UpvotePost;
         },
         ReactionKind::Downvote => {
           post.downvotes_count = post.downvotes_count.checked_add(1).ok_or(MSG_OVERFLOW_DOWNVOTING_POST)?;
-          action = ScoringAction::DownvotePost;
+          // action = ScoringAction::DownvotePost;
         },
       }
 
-      if post.created.account != owner {
-        Self::change_post_score(owner.clone(), post, action)?;
-      }
-      else {
-        <PostById<T>>::insert(post_id, post);
-      }
+      // if post.created.account != owner {
+      //   Self::change_post_score(owner.clone(), post, action)?;
+      // }
+      // else {
+      <PostById<T>>::insert(post_id, post);
+      // }
 
       <ReactionIdsByPostId<T>>::mutate(post_id, |ids| ids.push(reaction_id));
       <PostReactionIdByAccount<T>>::insert((owner.clone(), post_id), reaction_id);
@@ -625,24 +615,24 @@ decl_module! {
 
       let ref mut comment = Self::comment_by_id(comment_id).ok_or(MSG_COMMENT_NOT_FOUND)?;
       let reaction_id = Self::new_reaction(owner.clone(), kind.clone());
-      let action: ScoringAction;
+      // let action: ScoringAction;
 
       match kind {
         ReactionKind::Upvote => {
           comment.upvotes_count = comment.upvotes_count.checked_add(1).ok_or(MSG_OVERFLOW_UPVOTING_COMMENT)?;
-          action = ScoringAction::UpvoteComment;
+          // action = ScoringAction::UpvoteComment;
         },
         ReactionKind::Downvote => {
           comment.downvotes_count = comment.downvotes_count.checked_add(1).ok_or(MSG_OVERFLOW_DOWNVOTING_COMMENT)?;
-          action = ScoringAction::DownvoteComment;
+          // action = ScoringAction::DownvoteComment;
         },
       }
-      if comment.created.account != owner {
-        Self::change_comment_score(owner.clone(), comment, action)?;
-      }
-      else {
-        <CommentById<T>>::insert(comment_id, comment);
-      }
+      // if comment.created.account != owner {
+      //   Self::change_comment_score(owner.clone(), comment, action)?;
+      // }
+      // else {
+      <CommentById<T>>::insert(comment_id, comment);
+      // }
 
       <ReactionIdsByCommentId<T>>::mutate(comment_id, |ids| ids.push(reaction_id));
       <CommentReactionIdByAccount<T>>::insert((owner.clone(), comment_id), reaction_id);
@@ -880,25 +870,25 @@ decl_module! {
 
       reaction.kind = new_kind;
       reaction.updated = Some(Self::new_change(owner.clone()));
-      let action: ScoringAction;
-      let action_to_cancel: ScoringAction;
+      // let action: ScoringAction;
+      // let action_to_cancel: ScoringAction;
       
       match new_kind {
         ReactionKind::Upvote => {
           post.upvotes_count += 1;
           post.downvotes_count -= 1;
-          action_to_cancel = ScoringAction::DownvotePost;
-          action = ScoringAction::UpvotePost;
+          // action_to_cancel = ScoringAction::DownvotePost;
+          // action = ScoringAction::UpvotePost;
         },
         ReactionKind::Downvote => {
           post.downvotes_count += 1;
           post.upvotes_count -= 1;
-          action_to_cancel = ScoringAction::UpvotePost;
-          action = ScoringAction::DownvotePost;
+          // action_to_cancel = ScoringAction::UpvotePost;
+          // action = ScoringAction::DownvotePost;
         },
       }
-      Self::change_post_score(owner.clone(), post, action_to_cancel)?;
-      Self::change_post_score(owner.clone(), post, action)?;
+      // Self::change_post_score(owner.clone(), post, action_to_cancel)?;
+      // Self::change_post_score(owner.clone(), post, action)?;
 
       <ReactionById<T>>::insert(reaction_id, reaction);
       <PostById<T>>::insert(post_id, post);
@@ -922,25 +912,25 @@ decl_module! {
 
       reaction.kind = new_kind;
       reaction.updated = Some(Self::new_change(owner.clone()));
-      let action: ScoringAction;
-      let action_to_cancel: ScoringAction;
+      // let action: ScoringAction;
+      // let action_to_cancel: ScoringAction;
       
       match new_kind {
         ReactionKind::Upvote => {
           comment.upvotes_count += 1;
           comment.downvotes_count -= 1;
-          action_to_cancel = ScoringAction::DownvoteComment;
-          action = ScoringAction::UpvoteComment;
+          // action_to_cancel = ScoringAction::DownvoteComment;
+          // action = ScoringAction::UpvoteComment;
         },
         ReactionKind::Downvote => {
           comment.downvotes_count += 1;
           comment.upvotes_count -= 1;
-          action_to_cancel = ScoringAction::UpvoteComment;
-          action = ScoringAction::DownvoteComment;
+          // action_to_cancel = ScoringAction::UpvoteComment;
+          // action = ScoringAction::DownvoteComment;
         },
       }
-      Self::change_comment_score(owner.clone(), comment, action_to_cancel)?;
-      Self::change_comment_score(owner.clone(), comment, action)?;
+      // Self::change_comment_score(owner.clone(), comment, action_to_cancel)?;
+      // Self::change_comment_score(owner.clone(), comment, action)?;
 
       <ReactionById<T>>::insert(reaction_id, reaction);
       <CommentById<T>>::insert(comment_id, comment);
@@ -965,7 +955,7 @@ decl_module! {
         MSG_NO_POST_REACTION_BY_ACCOUNT_TO_DELETE
       );
       
-      let action_to_cancel: ScoringAction;
+      // let action_to_cancel: ScoringAction;
       let reaction = Self::reaction_by_id(reaction_id).ok_or(MSG_REACTION_NOT_FOUND)?;
       let ref mut post = Self::post_by_id(post_id).ok_or(MSG_POST_NOT_FOUND)?;
 
@@ -974,15 +964,15 @@ decl_module! {
       match reaction.kind {
         ReactionKind::Upvote => {
           post.upvotes_count -= 1;
-          action_to_cancel = ScoringAction::UpvotePost;
+          // action_to_cancel = ScoringAction::UpvotePost;
         },
         ReactionKind::Downvote => {
           post.downvotes_count -= 1;
-          action_to_cancel = ScoringAction::DownvotePost;
+          // action_to_cancel = ScoringAction::DownvotePost;
 
         },
       }
-      Self::change_post_score(owner.clone(), post, action_to_cancel)?;
+      // Self::change_post_score(owner.clone(), post, action_to_cancel)?;
 
       <PostById<T>>::insert(post_id, post);
       <ReactionById<T>>::remove(reaction_id);
@@ -1000,7 +990,7 @@ decl_module! {
         MSG_NO_COMMENT_REACTION_BY_ACCOUNT_TO_DELETE
       );
       
-      let action_to_cancel: ScoringAction;
+      // let action_to_cancel: ScoringAction;
       let reaction = Self::reaction_by_id(reaction_id).ok_or(MSG_REACTION_NOT_FOUND)?;
       let ref mut comment = Self::comment_by_id(comment_id).ok_or(MSG_COMMENT_NOT_FOUND)?;
       
@@ -1009,14 +999,14 @@ decl_module! {
       match reaction.kind {
         ReactionKind::Upvote => {
           comment.upvotes_count -= 1;
-          action_to_cancel = ScoringAction::UpvoteComment
+          // action_to_cancel = ScoringAction::UpvoteComment
         },
         ReactionKind::Downvote => {
           comment.downvotes_count -= 1;
-          action_to_cancel = ScoringAction::DownvoteComment
+          // action_to_cancel = ScoringAction::DownvoteComment
         },
       }
-      Self::change_comment_score(owner.clone(), comment, action_to_cancel)?;
+      // Self::change_comment_score(owner.clone(), comment, action_to_cancel)?;
 
       <CommentById<T>>::insert(comment_id, comment);
       <ReactionIdsByCommentId<T>>::mutate(comment_id, |ids| Self::vec_remove_on(ids, reaction_id));
