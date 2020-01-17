@@ -14,6 +14,13 @@ impl<T: Trait> Module<T> {
     Ok(())
   }
 
+  pub fn ensure_account_is_space_owner(account: T::AccountId, space: T::SpaceId) -> Result {
+    let space = Self::space_by_id(space).ok_or(MSG_ON_BEHALF_SPACE_NOT_FOUND)?;
+    ensure!(space.created.on_behalf.account == account, MSG_ACCOUNT_IS_NOT_A_SPACE_OWNER);
+
+    Ok(())
+  }
+
   pub fn new_change(on_behalf: SpacedAccount<T>) -> Change<T> {
     Change {
       on_behalf,
@@ -276,13 +283,6 @@ impl<T: Trait> Module<T> {
     <SharedPostIdsByOriginalCommentId<T>>::mutate(original_comment_id, |ids| ids.push(shared_post_id));
 
     Self::deposit_event(RawEvent::CommentShared(account, original_comment_id));
-
-    Ok(())
-  }
-
-  pub fn ensure_account_is_space_owner(account: SpacedAccount<T>, space: T::SpaceId) -> Result {
-    let space = Self::space_by_id(space).ok_or(MSG_SPACE_NOT_FOUND)?;
-    ensure!(space.created.on_behalf == account, MSG_ACCOUNT_IS_NOT_A_SPACE_OWNER);
 
     Ok(())
   }
