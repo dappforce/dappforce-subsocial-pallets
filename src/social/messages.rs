@@ -68,7 +68,3 @@ pub const MSG_CANNOT_SHARE_SHARED_POST: &str = "Cannot share post that is not re
 pub const MSG_ORIGINAL_COMMENT_NOT_FOUND: &str = "Original comment not found when sharing";
 pub const MSG_OVERFLOW_TOTAL_SHARES_SHARING_COMMENT: &str = "Overflow total shares counter when sharing comment";
 pub const MSG_OVERFLOW_COMMENT_SHARES_BY_ACCOUNT: &str = "Overflow shares by account counter when sharing comment";
-
-pub const MSG_PROFILE_ALREADY_EXISTS: &str = "Profile for this account already exists";
-pub const MSG_NOTHING_TO_UPDATE_IN_PROFILE: &str = "Nothing to update in a profile";
-pub const MSG_PROFILE_DOESNT_EXIST: &str = "Account has no profile yet";
