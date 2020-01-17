@@ -279,11 +279,4 @@ impl<T: Trait> Module<T> {
 
     Ok(())
   }
-
-  pub fn get_spaced_account(account: T::AccountId, space: T::SpaceId) -> SpacedAccount<T> {
-    SpacedAccount {
-      account,
-      space: Some(space)
-    }
-  }
 }
