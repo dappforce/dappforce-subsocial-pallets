@@ -279,4 +279,11 @@ impl<T: Trait> Module<T> {
 
     Ok(())
   }
+
+  pub fn ensure_account_is_space_owner(account: SpacedAccount<T>, space: T::SpaceId) -> Result {
+    let space = Self::space_by_id(space).ok_or(MSG_SPACE_NOT_FOUND)?;
+    ensure!(space.created.on_behalf == account, MSG_ACCOUNT_IS_NOT_A_SPACE_OWNER);
+
+    Ok(())
+  }
 }

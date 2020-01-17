@@ -6,6 +6,7 @@ pub const MSG_SPACE_HANDLE_IS_NOT_UNIQUE: &str = "Space handle is not unique";
 pub const MSG_SPACE_HANDLE_NOT_ALPHANUMERIC: &str = "Space handle is not alphanumeric";
 pub const MSG_NOTHING_TO_UPDATE_IN_SPACE: &str = "Nothing to update in a space";
 pub const MSG_ONLY_SPACE_OWNER_CAN_UPDATE_SPACE: &str = "Only a space owner can update their space";
+pub const MSG_ACCOUNT_IS_NOT_A_SPACE_OWNER: &str = "Account is not a space owner";
 
 pub const MSG_POST_NOT_FOUND: &str = "Post was not found by id";
 pub const MSG_NOTHING_TO_UPDATE_IN_POST: &str = "Nothing to update in a post";

@@ -413,6 +413,7 @@ decl_module! {
 
       let mut space = Self::space_by_id(space_id).ok_or(MSG_SPACE_NOT_FOUND)?;
       space.posts_count = space.posts_count.checked_add(1).ok_or(MSG_OVERFLOW_ADDING_POST_ON_SPACE)?;
+      Self::ensure_account_is_space_owner(SpacedAccount::new(owner.clone(), on_behalf), space_id)?;
 
       let new_post_id = Self::next_post_id();
 
