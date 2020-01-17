@@ -58,6 +58,7 @@ pub struct Space<T: Trait> {
   pub id: T::SpaceId,
   pub created: Change<T>,
   pub updated: Option<Change<T>>,
+  pub hidden: bool,
 
   // Can be updated by the owner:
   // pub owners: Vec<T::AccountId>,
@@ -79,6 +80,7 @@ pub struct SpaceUpdate {
   // pub owners: Option<Vec<T::AccountId>>,
   pub handle: Option<Vec<u8>>,
   pub ipfs_hash: Option<Vec<u8>>,
+  pub hidden: Option<bool>,
 }
 
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -95,6 +97,7 @@ pub struct Post<T: Trait> {
   pub space_id: T::SpaceId,
   pub created: Change<T>,
   pub updated: Option<Change<T>>,
+  pub hidden: bool,
   pub extension: PostExtension<T>,
 
   // Next fields can be updated by the owner only:
@@ -116,6 +119,7 @@ pub struct Post<T: Trait> {
 pub struct PostUpdate<T: Trait> {
   pub space_id: Option<T::SpaceId>,
   pub ipfs_hash: Option<Vec<u8>>,
+  pub hidden: Option<bool>,
 }
 
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -147,6 +151,7 @@ pub struct Comment<T: Trait> {
   pub post_id: T::PostId,
   pub created: Change<T>,
   pub updated: Option<Change<T>>,
+  pub hidden: bool,
 
   // Can be updated by the owner:
   pub ipfs_hash: Vec<u8>,
@@ -164,7 +169,8 @@ pub struct Comment<T: Trait> {
 #[cfg_attr(feature = "std", derive(Debug))]
 #[derive(Clone, Encode, Decode, PartialEq)]
 pub struct CommentUpdate {
-  pub ipfs_hash: Vec<u8>,
+  pub ipfs_hash: Option<Vec<u8>>,
+  pub hidden: Option<bool>,
 }
 
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -344,6 +350,7 @@ decl_module! {
         id: space_id,
         created: Self::new_change(SpacedAccount::new(owner.clone(), on_behalf)),
         updated: None,
+        hidden: false,
         // owners: vec![],
         handle: handle.clone(),
         ipfs_hash,
@@ -430,6 +437,7 @@ decl_module! {
         created: Self::new_change(SpacedAccount::new(owner.clone(), on_behalf)),
         updated: None,
         extension,
+        hidden: false,
         ipfs_hash,
         comments_count: 0,
         upvotes_count: 0,
@@ -461,6 +469,7 @@ decl_module! {
         post_id,
         created: Self::new_change(SpacedAccount::new(owner.clone(), on_behalf)),
         updated: None,
+        hidden: false,
         ipfs_hash,
         upvotes_count: 0,
         downvotes_count: 0,
@@ -570,7 +579,8 @@ decl_module! {
       let has_updates = 
         // update.writers.is_some() ||
         update.handle.is_some() ||
-        update.ipfs_hash.is_some();
+        update.ipfs_hash.is_some() ||
+        update.hidden.is_some();
 
       ensure!(has_updates, MSG_NOTHING_TO_UPDATE_IN_SPACE);
 
@@ -582,7 +592,7 @@ decl_module! {
       let mut fields_updated = 0;
       let mut new_history_record = SpaceHistoryRecord {
         edited: Self::new_change(spaced_account.clone()),
-        old_data: SpaceUpdate {/*writers: None, */handle: None, ipfs_hash: None}
+        old_data: SpaceUpdate {/*writers: None, */handle: None, ipfs_hash: None, hidden: None}
       };
 
       /*
@@ -596,6 +606,14 @@ decl_module! {
         }
       }
       */
+
+      if let Some(hidden) = update.hidden {
+        if hidden != space.hidden {
+          new_history_record.old_data.hidden = Some(space.hidden);
+          space.hidden = hidden;
+          fields_updated += 1;
+        }
+      }
 
       if let Some(ipfs_hash) = update.ipfs_hash {
         if Some(ipfs_hash.clone()) != space.ipfs_hash {
@@ -636,7 +654,8 @@ decl_module! {
       let spaced_account = SpacedAccount::new(owner.clone(), on_behalf);
       let has_updates = 
         update.space_id.is_some() ||
-        update.ipfs_hash.is_some();
+        update.ipfs_hash.is_some() ||
+        update.hidden.is_some();
 
       ensure!(has_updates, MSG_NOTHING_TO_UPDATE_IN_POST);
 
@@ -648,7 +667,7 @@ decl_module! {
       let mut fields_updated = 0;
       let mut new_history_record = PostHistoryRecord {
         edited: Self::new_change(spaced_account.clone()),
-        old_data: PostUpdate {space_id: None, ipfs_hash: None}
+        old_data: PostUpdate {space_id: None, ipfs_hash: None, hidden: None}
       };
 
       if let Some(ipfs_hash) = update.ipfs_hash {
@@ -656,6 +675,14 @@ decl_module! {
           Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
           new_history_record.old_data.ipfs_hash = Some(post.ipfs_hash);
           post.ipfs_hash = ipfs_hash;
+          fields_updated += 1;
+        }
+      }
+
+      if let Some(hidden) = update.hidden {
+        if hidden != post.hidden {
+          new_history_record.old_data.hidden = Some(post.hidden);
+          post.hidden = hidden;
           fields_updated += 1;
         }
       }
@@ -690,24 +717,46 @@ decl_module! {
       let owner = ensure_signed(origin)?;
 
       let spaced_account = SpacedAccount::new(owner.clone(), on_behalf);
+      let has_updates = 
+        update.ipfs_hash.is_some() ||
+        update.hidden.is_some();
+      
+      ensure!(has_updates, MSG_NOTHING_TO_UPDATE_IN_COMMENT);
+
       let mut comment = Self::comment_by_id(comment_id).ok_or(MSG_COMMENT_NOT_FOUND)?;
+
       ensure!(spaced_account == comment.created.on_behalf, MSG_ONLY_COMMENT_AUTHOR_CAN_UPDATE_COMMENT);
 
-      let ipfs_hash = update.ipfs_hash;
-      ensure!(ipfs_hash != comment.ipfs_hash, MSG_NEW_COMMENT_HASH_DO_NOT_DIFFER);
-      Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
-
-      let new_history_record = CommentHistoryRecord {
+      let mut fields_updated = 0;
+      let mut new_history_record = CommentHistoryRecord {
         edited: Self::new_change(spaced_account.clone()),
-        old_data: CommentUpdate {ipfs_hash: comment.ipfs_hash}
+        old_data: CommentUpdate {ipfs_hash: None, hidden: None}
       };
-      comment.edit_history.push(new_history_record);
 
-      comment.ipfs_hash = ipfs_hash;
-      comment.updated = Some(Self::new_change(spaced_account.clone()));
-      <CommentById<T>>::insert(comment_id, comment);
+      if let Some(ipfs_hash) = update.ipfs_hash {
+        if ipfs_hash != comment.ipfs_hash {
+          Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
+          new_history_record.old_data.ipfs_hash = Some(comment.ipfs_hash);
+          comment.ipfs_hash = ipfs_hash;
+          fields_updated += 1;
+        }
+      }
 
-      Self::deposit_event(RawEvent::CommentUpdated(owner.clone(), comment_id));
+      if let Some(hidden) = update.hidden {
+        if hidden != comment.hidden {
+          new_history_record.old_data.hidden = Some(comment.hidden);
+          comment.hidden = hidden;
+          fields_updated += 1;
+        }
+      }
+
+      if fields_updated > 0 {
+        comment.updated = Some(Self::new_change(spaced_account.clone()));
+        comment.edit_history.push(new_history_record);
+        <CommentById<T>>::insert(comment_id, comment);
+
+        Self::deposit_event(RawEvent::CommentUpdated(owner.clone(), comment_id));
+      }
     }
 
     pub fn update_post_reaction(origin, on_behalf: T::SpaceId, post_id: T::PostId, reaction_id: T::ReactionId, new_kind: ReactionKind) {

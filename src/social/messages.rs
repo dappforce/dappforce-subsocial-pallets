@@ -13,9 +13,9 @@ pub const MSG_ONLY_POST_OWNER_CAN_UPDATE_POST: &str = "Only post owner can updat
 pub const MSG_OVERFLOW_ADDING_POST_ON_SPACE: &str = "Overflow adding post on space";
 
 pub const MSG_COMMENT_NOT_FOUND: &str = "Comment was not found by id";
+pub const MSG_NOTHING_TO_UPDATE_IN_COMMENT: &str = "Nothing to update in comment";
 pub const MSG_UNKNOWN_PARENT_COMMENT: &str = "Unknown parent comment id";
 pub const MSG_ONLY_COMMENT_AUTHOR_CAN_UPDATE_COMMENT: &str = "Only comment author can update their comment";
-pub const MSG_NEW_COMMENT_HASH_DO_NOT_DIFFER: &str = "New comment IPFS-hash is the same as old one";
 pub const MSG_OVERFLOW_ADDING_COMMENT_ON_POST: &str = "Overflow adding comment on post";
 pub const MSG_OVERFLOW_REPLYING_ON_COMMENT: &str = "Overflow replying on comment";
 
