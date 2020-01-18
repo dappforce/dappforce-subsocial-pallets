@@ -233,11 +233,20 @@ impl<T: Trait> Module<T> {
   }
   */
 
+  fn is_valid_handle_char(c: u8) -> bool {
+    match c {
+        b'0'..=b'9' | b'a'..=b'z' | b'_' => true,
+        _ => false,
+    }
+  }
+
   pub fn is_space_handle_valid(handle: Vec<u8>) -> Result {
     ensure!(Self::space_id_by_handle(handle.clone()).is_none(), MSG_SPACE_HANDLE_IS_NOT_UNIQUE);
+
     ensure!(handle.len() >= Self::handle_min_len() as usize, MSG_SPACE_HANDLE_IS_TOO_SHORT);
     ensure!(handle.len() <= Self::handle_max_len() as usize, MSG_SPACE_HANDLE_IS_TOO_LONG);
-    ensure!(handle.iter().all(|&x| x.is_ascii_alphanumeric()), MSG_SPACE_HANDLE_NOT_ALPHANUMERIC);
+    
+    ensure!(handle.iter().all(|&x| Self::is_valid_handle_char(x)), MSG_SPACE_HANDLE_CONTAINS_INVALID_CHAR);
 
     Ok(())
   }
