@@ -26,6 +26,7 @@ pub trait Trait: system::Trait + timestamp::Trait + MaybeDebug {
     + As<usize> + As<u64> + MaybeSerializeDebug + PartialEq;
 }
 
+// TODO: Rename WhoAndWhen, MutatedBy?
 #[cfg_attr(feature = "std", derive(Debug))]
 #[derive(Clone, Encode, Decode, PartialEq)]
 pub struct Change<T: Trait> {
@@ -78,6 +79,12 @@ pub struct Space<T: Trait> {
   pub posts_count: u32,
 
   pub score: i32,
+}
+
+impl <T: Trait> Space<T> {
+  pub fn is_owner(self, account: T::AccountId) -> bool {
+    self.created.on_behalf.account == account
+  }
 }
 
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -340,7 +347,7 @@ decl_module! {
     }
 
     // TODO use SpaceUpdate to pass data
-    pub fn create_space(origin, handle: Vec<u8>, ipfs_hash: Option<Vec<u8>>) {
+    pub fn create_space(origin, on_behalf: Option<T::SpaceId>, handle: Vec<u8>, ipfs_hash: Option<Vec<u8>>) {
       let owner = ensure_signed(origin)?;
 
       Self::is_space_handle_valid(handle.clone())?;
@@ -349,7 +356,7 @@ decl_module! {
       }
 
       let space_id = Self::next_space_id();
-      let spaced_account = SpacedAccount::new(owner.clone(), None)?;
+      let spaced_account = Self::new_spaced_account(owner.clone(), on_behalf)?;
 
       let ref mut new_space: Space<T> = Space {
         id: space_id,
@@ -413,14 +420,12 @@ decl_module! {
     }
 
     // TODO use PostUpdate to pass data?
+    // TODO: Make on_behalf as Option
     pub fn create_post(origin, on_behalf: T::SpaceId, space_id: T::SpaceId, ipfs_hash: Vec<u8>, extension: PostExtension<T>) {
       let owner = ensure_signed(origin)?;
 
       let mut space = Self::space_by_id(space_id).ok_or(MSG_SPACE_NOT_FOUND)?;
-      let spaced_account = SpacedAccount::new(owner.clone(), Some(on_behalf))?;
       Self::ensure_account_is_space_owner(owner.clone(), space_id)?;
-
-      space.posts_count = space.posts_count.checked_add(1).ok_or(MSG_OVERFLOW_ADDING_POST_ON_SPACE)?;
 
       let new_post_id = Self::next_post_id();
 
@@ -439,6 +444,7 @@ decl_module! {
         },
       }
 
+      let spaced_account = Self::new_spaced_account(owner.clone(), Some(on_behalf))?;
       let new_post: Post<T> = Post {
         id: new_post_id,
         space_id,
@@ -455,6 +461,8 @@ decl_module! {
         score: 0,
       };
 
+      space.posts_count = space.posts_count.checked_add(1).ok_or(MSG_OVERFLOW_ADDING_POST_ON_SPACE)?;
+      
       <PostById<T>>::insert(new_post_id, new_post);
       <PostIdsBySpaceId<T>>::mutate(space_id, |ids| ids.push(new_post_id));
       <NextPostId<T>>::mutate(|n| { *n += T::PostId::sa(1); });
@@ -506,6 +514,7 @@ decl_module! {
       Self::deposit_event(RawEvent::CommentCreated(owner.clone(), comment_id));
     }
 
+    // TODO: Make on_behalf as Option
     pub fn create_post_reaction(origin, on_behalf: T::SpaceId, post_id: T::PostId, kind: ReactionKind) {
       let owner = ensure_signed(origin)?;
 
@@ -543,6 +552,7 @@ decl_module! {
       Self::deposit_event(RawEvent::PostReactionCreated(owner.clone(), post_id, reaction_id));
     }
 
+    // TODO: Make on_behalf as Option
     pub fn create_comment_reaction(origin, on_behalf: T::SpaceId, comment_id: T::CommentId, kind: ReactionKind) {
       let owner = ensure_signed(origin)?;
 
@@ -579,6 +589,7 @@ decl_module! {
       Self::deposit_event(RawEvent::CommentReactionCreated(owner.clone(), comment_id, reaction_id));
     }
 
+    // TODO: Make on_behalf as Option
     pub fn update_space(origin, on_behalf: T::SpaceId, space_id: T::SpaceId, update: SpaceUpdate) {
       let owner = ensure_signed(origin)?;
       
@@ -655,6 +666,7 @@ decl_module! {
       }
     }
     
+    // TODO: Make on_behalf as Option
     pub fn update_post(origin, on_behalf: T::SpaceId, post_id: T::PostId, update: PostUpdate<T>) {
       let owner = ensure_signed(origin)?;
       
@@ -720,6 +732,7 @@ decl_module! {
       }
     }
     
+    // TODO: Make on_behalf as Option
     pub fn update_comment(origin, on_behalf: T::SpaceId, comment_id: T::CommentId, update: CommentUpdate) {
       let owner = ensure_signed(origin)?;
 
@@ -732,7 +745,8 @@ decl_module! {
 
       let mut comment = Self::comment_by_id(comment_id).ok_or(MSG_COMMENT_NOT_FOUND)?;
 
-      ensure!(spaced_account == comment.created.on_behalf, MSG_ONLY_COMMENT_AUTHOR_CAN_UPDATE_COMMENT);
+      // TODO: Make is_owner in impl
+      ensure!(owner.clone() == comment.created.on_behalf.account, MSG_ONLY_COMMENT_AUTHOR_CAN_UPDATE_COMMENT);
 
       let mut fields_updated = 0;
       let mut new_history_record = CommentHistoryRecord {
@@ -766,6 +780,7 @@ decl_module! {
       }
     }
 
+    // TODO: Make on_behalf as Option
     pub fn update_post_reaction(origin, on_behalf: T::SpaceId, post_id: T::PostId, reaction_id: T::ReactionId, new_kind: ReactionKind) {
       let owner = ensure_signed(origin)?;
 
@@ -809,6 +824,7 @@ decl_module! {
       Self::deposit_event(RawEvent::PostReactionUpdated(owner.clone(), post_id, reaction_id));
     }
 
+    // TODO: Make on_behalf as Option
     pub fn update_comment_reaction(origin, on_behalf: T::SpaceId, comment_id: T::CommentId, reaction_id: T::ReactionId, new_kind: ReactionKind) {
       let owner = ensure_signed(origin)?;
 
@@ -861,6 +877,7 @@ decl_module! {
     
     // TODO fn delete_comment(origin, comment_id: T::CommentId) {}
 
+    // TODO: Make on_behalf as Option
     pub fn delete_post_reaction(origin, on_behalf: T::SpaceId, post_id: T::PostId, reaction_id: T::ReactionId) {
       let owner = ensure_signed(origin)?;
 
@@ -897,6 +914,7 @@ decl_module! {
       Self::deposit_event(RawEvent::PostReactionDeleted(owner.clone(), post_id, reaction_id));
     }
 
+    // TODO: Make on_behalf as Option
     pub fn delete_comment_reaction(origin, on_behalf: T::SpaceId, comment_id: T::CommentId, reaction_id: T::ReactionId) {
       let owner = ensure_signed(origin)?;
 
