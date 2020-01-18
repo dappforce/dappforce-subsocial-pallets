@@ -45,7 +45,6 @@ impl<T: Trait> Module<T> {
     reaction_id
   }
 
-  // TODO: What technically means when space is following itself?
   pub fn add_space_follower_and_insert_space(
     on_behalf: SpacedAccount<T>,
     space: &mut Space<T>,
@@ -53,18 +52,22 @@ impl<T: Trait> Module<T> {
   ) -> Result {
 
     let space_id = space.id;
+    let mut following_by = space_id;
     
     space.followers_count = space.followers_count.checked_add(1).ok_or(MSG_OVERFLOW_FOLLOWING_SPACE)?;
     if let Some(following_space_id) = on_behalf.space {
       let mut following_space = Self::space_by_id(following_space_id).ok_or(MSG_ON_BEHALF_SPACE_NOT_FOUND)?;
-      following_space.following_count = following_space.following_count.checked_add(1).ok_or(MSG_OVERFLOW_FOLLOWING_SPACE)?;
 
-      <SpaceById<T>>::insert(following_space_id, following_space);
-      <SpaceById<T>>::insert(space_id, space);
-      <SpacesFollowedBySpace<T>>::mutate(following_space_id, |ids| ids.push(space_id));
-      <SpaceFollowers<T>>::mutate(space_id, |ids| ids.push(following_space_id));
-      <SpaceFollowedBySpace<T>>::insert((following_space_id, space_id), true);
+      following_space.following_count = following_space.following_count.checked_add(1).ok_or(MSG_OVERFLOW_FOLLOWING_SPACE)?;
+      following_by = following_space_id;
+      <SpaceById<T>>::insert(following_by, following_space);
     }
+
+    <SpaceById<T>>::insert(space_id, space);
+    <SpacesFollowedBySpace<T>>::mutate(following_by, |ids| ids.push(space_id));
+    <SpaceFollowers<T>>::mutate(space_id, |ids| ids.push(following_by));
+    <SpaceFollowedBySpace<T>>::insert((following_by, space_id), true);
+
     /*
     if space.created.account != follower {
       let author = space.created.account.clone();
@@ -77,7 +80,6 @@ impl<T: Trait> Module<T> {
     if is_new_space {
       Self::deposit_event(RawEvent::SpaceCreated(on_behalf.account.clone(), space_id));
     }
-
     Self::deposit_event(RawEvent::SpaceFollowed(on_behalf.account, space_id));
     
     Ok(())
