@@ -225,7 +225,6 @@ impl<T: Trait> Module<T> {
     score_diff as i16 * Self::weight_of_scoring_action(action)
   }
 
-  // TODO write unit tests for this method.
   pub fn weight_of_scoring_action(action: ScoringAction) -> i16 {
     match action {
       ScoringAction::UpvotePost => Self::upvote_post_action_weight(),
