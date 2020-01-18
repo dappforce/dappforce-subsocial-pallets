@@ -1,13 +1,21 @@
 use super::spaces::*;
 use super::messages::*;
 
-use rstd::prelude::*;
+use rstd::{result, prelude::*};
 use srml_support::{StorageMap, StorageValue, dispatch::Result, ensure};
 use runtime_primitives::traits::{As};
 use system::{self};
 use {timestamp};
 
 impl<T: Trait> Module<T> {
+
+  pub fn new_change(on_behalf: SpacedAccount<T>) -> Change<T> {
+    Change {
+      on_behalf,
+      block: <system::Module<T>>::block_number(),
+      time: <timestamp::Module<T>>::now(),
+    }
+  }
 
   pub fn ensure_space_exists(space_id: T::SpaceId) -> Result {
     ensure!(<SpaceById<T>>::exists(space_id), MSG_SPACE_NOT_FOUND);
@@ -21,12 +29,19 @@ impl<T: Trait> Module<T> {
     Ok(())
   }
 
-  pub fn new_change(on_behalf: SpacedAccount<T>) -> Change<T> {
-    Change {
-      on_behalf,
-      block: <system::Module<T>>::block_number(),
-      time: <timestamp::Module<T>>::now(),
+  pub fn new_spaced_account(account: T::AccountId, space_opt: Option<T::SpaceId>) 
+    -> result::Result<SpacedAccount<T>, &'static str> {
+
+    if let Some(space) = space_opt {
+      Self::ensure_account_is_space_owner(account.clone(), space)?;
     }
+
+    Ok(
+      SpacedAccount {
+        account,
+        space: space_opt
+      }
+    )
   }
 
   // TODO: maybe don't add reaction in storage before checks in 'create_reaction' are done?
