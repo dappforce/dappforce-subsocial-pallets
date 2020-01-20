@@ -93,9 +93,9 @@ impl<T: Trait> Module<T> {
     */
 
     if is_new_space {
-      Self::deposit_event(RawEvent::SpaceCreated(on_behalf.account.clone(), space_id));
+      Self::deposit_event(RawEvent::SpaceCreated(on_behalf.clone(), space_id));
     }
-    Self::deposit_event(RawEvent::SpaceFollowed(on_behalf.account, space_id));
+    Self::deposit_event(RawEvent::SpaceFollowed(on_behalf, space_id));
     
     Ok(())
   }
@@ -271,13 +271,15 @@ impl<T: Trait> Module<T> {
     Ok(())
   }
 
-  pub fn share_post(account: T::AccountId, original_post_id: T::PostId, shared_post_id: T::PostId) -> Result {
+  pub fn share_post(account: T::AccountId, on_behalf: Option<T::SpaceId>, original_post_id: T::PostId, shared_post_id: T::PostId) -> Result {
     let ref mut original_post = Self::post_by_id(original_post_id).ok_or(MSG_ORIGINAL_POST_NOT_FOUND)?;
     original_post.shares_count = original_post.shares_count.checked_add(1)
       .ok_or(MSG_OVERFLOW_TOTAL_SHARES_SHARING_POST)?;
 
     let mut shares_by_account = Self::post_shares_by_account((account.clone(), original_post_id));
     shares_by_account = shares_by_account.checked_add(1).ok_or(MSG_OVERFLOW_POST_SHARES_BY_ACCOUNT)?;
+    
+    let spaced_account = Self::new_spaced_account(account.clone(), on_behalf)?;
 
     // if shares_by_account == 1 {
     //   Self::change_post_score(account.clone(), original_post, ScoringAction::SharePost)?;
@@ -287,18 +289,20 @@ impl<T: Trait> Module<T> {
     <PostSharesByAccount<T>>::insert((account.clone(), original_post_id), shares_by_account); // TODO Maybe use mutate instead?
     <SharedPostIdsByOriginalPostId<T>>::mutate(original_post_id, |ids| ids.push(shared_post_id));
 
-    Self::deposit_event(RawEvent::PostShared(account, original_post_id));
+    Self::deposit_event(RawEvent::PostShared(spaced_account, original_post_id));
 
     Ok(())
   }
 
-  pub fn share_comment(account: T::AccountId, original_comment_id: T::CommentId, shared_post_id: T::PostId) -> Result {
+  pub fn share_comment(account: T::AccountId, on_behalf: Option<T::SpaceId>, original_comment_id: T::CommentId, shared_post_id: T::PostId) -> Result {
     let ref mut original_comment = Self::comment_by_id(original_comment_id).ok_or(MSG_ORIGINAL_COMMENT_NOT_FOUND)?;
     original_comment.shares_count = original_comment.shares_count.checked_add(1)
       .ok_or(MSG_OVERFLOW_TOTAL_SHARES_SHARING_COMMENT)?;
 
     let mut shares_count = Self::comment_shares_by_account((account.clone(), original_comment_id));
     shares_count = shares_count.checked_add(1).ok_or(MSG_OVERFLOW_COMMENT_SHARES_BY_ACCOUNT)?;
+
+    let spaced_account = Self::new_spaced_account(account.clone(), on_behalf)?;
 
     // if shares_count == 1 {
     //   Self::change_comment_score(account.clone(), original_comment, ScoringAction::ShareComment)?;
@@ -307,7 +311,7 @@ impl<T: Trait> Module<T> {
     <CommentSharesByAccount<T>>::insert((account.clone(), original_comment_id), shares_count); // TODO Maybe use mutate instead?
     <SharedPostIdsByOriginalCommentId<T>>::mutate(original_comment_id, |ids| ids.push(shared_post_id));
 
-    Self::deposit_event(RawEvent::CommentShared(account, original_comment_id));
+    Self::deposit_event(RawEvent::CommentShared(spaced_account, original_comment_id));
 
     Ok(())
   }

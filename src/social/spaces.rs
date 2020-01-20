@@ -36,7 +36,7 @@ pub struct Change<T: Trait> {
 }
 
 #[cfg_attr(feature = "std", derive(Debug))]
-#[derive(Clone, Copy, Encode, Decode, PartialEq)]
+#[derive(Clone, Copy, Encode, Decode, PartialEq, Eq)]
 pub struct SpacedAccount<T: Trait> {
   pub account: T::AccountId,
   pub space: Option<T::SpaceId>,
@@ -283,38 +283,38 @@ decl_storage! {
 
 decl_event! {
   pub enum Event<T> where
-    <T as system::Trait>::AccountId,
+    SpacedAccount = SpacedAccount<T>,
     <T as Trait>::SpaceId,
     <T as Trait>::PostId,
     <T as Trait>::CommentId,
     <T as Trait>::ReactionId
   {
-    SpaceCreated(AccountId, SpaceId),
-    SpaceUpdated(AccountId, SpaceId),
-    SpaceDeleted(AccountId, SpaceId),
+    SpaceCreated(SpacedAccount, SpaceId),
+    SpaceUpdated(SpacedAccount, SpaceId),
+    SpaceDeleted(SpacedAccount, SpaceId),
 
-    SpaceFollowed(AccountId, SpaceId),
-    SpaceUnfollowed(AccountId, SpaceId),
+    SpaceFollowed(SpacedAccount, SpaceId),
+    SpaceUnfollowed(SpacedAccount, SpaceId),
 
     // AccountReputationChanged(AccountId, ScoringAction, u32),
 
-    PostCreated(AccountId, PostId),
-    PostUpdated(AccountId, PostId),
-    PostDeleted(AccountId, PostId),
-    PostShared(AccountId, PostId),
+    PostCreated(SpacedAccount, PostId),
+    PostUpdated(SpacedAccount, PostId),
+    PostDeleted(SpacedAccount, PostId),
+    PostShared(SpacedAccount, PostId),
 
-    CommentCreated(AccountId, CommentId),
-    CommentUpdated(AccountId, CommentId),
-    CommentDeleted(AccountId, CommentId),
-    CommentShared(AccountId, CommentId),
+    CommentCreated(SpacedAccount, CommentId),
+    CommentUpdated(SpacedAccount, CommentId),
+    CommentDeleted(SpacedAccount, CommentId),
+    CommentShared(SpacedAccount, CommentId),
 
-    PostReactionCreated(AccountId, PostId, ReactionId),
-    PostReactionUpdated(AccountId, PostId, ReactionId),
-    PostReactionDeleted(AccountId, PostId, ReactionId),
+    PostReactionCreated(SpacedAccount, PostId, ReactionId),
+    PostReactionUpdated(SpacedAccount, PostId, ReactionId),
+    PostReactionDeleted(SpacedAccount, PostId, ReactionId),
 
-    CommentReactionCreated(AccountId, CommentId, ReactionId),
-    CommentReactionUpdated(AccountId, CommentId, ReactionId),
-    CommentReactionDeleted(AccountId, CommentId, ReactionId),
+    CommentReactionCreated(SpacedAccount, CommentId, ReactionId),
+    CommentReactionUpdated(SpacedAccount, CommentId, ReactionId),
+    CommentReactionDeleted(SpacedAccount, CommentId, ReactionId),
   }
 }
 
@@ -387,6 +387,8 @@ decl_module! {
         .ok_or(MSG_UNDERFLOW_UNFOLLOWING_SPACE)?;
       space.followers_count = space.followers_count.checked_sub(1).ok_or(MSG_UNDERFLOW_UNFOLLOWING_SPACE)?;
 
+      let spaced_account = Self::new_spaced_account(follower.clone(), Some(on_behalf))?;
+
       // if space.created.account != follower {
       //   let author = space.created.account.clone();
       //   if let Some(score_diff) = Self::account_reputation_diff_by_account((follower.clone(), author.clone(), ScoringAction::FollowSpace)) {
@@ -401,7 +403,7 @@ decl_module! {
       <SpaceById<T>>::insert(on_behalf, follower_space);
       <SpaceById<T>>::insert(space_id, space);
 
-      Self::deposit_event(RawEvent::SpaceUnfollowed(follower.clone(), space_id));
+      Self::deposit_event(RawEvent::SpaceUnfollowed(spaced_account, space_id));
     }
 
     // TODO use PostUpdate to pass data?
@@ -421,10 +423,10 @@ decl_module! {
         PostExtension::SharedPost(post_id) => {
           let post = Self::post_by_id(post_id).ok_or(MSG_ORIGINAL_POST_NOT_FOUND)?;
           ensure!(post.extension == PostExtension::RegularPost, MSG_CANNOT_SHARE_SHARED_POST);
-          Self::share_post(owner.clone(), post_id, new_post_id)?;
+          Self::share_post(owner.clone(), on_behalf, post_id, new_post_id)?;
         },
         PostExtension::SharedComment(comment_id) => {
-          Self::share_comment(owner.clone(), comment_id, new_post_id)?;
+          Self::share_comment(owner.clone(), on_behalf, comment_id, new_post_id)?;
         },
       }
 
@@ -452,7 +454,7 @@ decl_module! {
       <NextPostId<T>>::mutate(|n| { *n += T::PostId::sa(1); });
       <SpaceById<T>>::insert(space_id, space);
 
-      Self::deposit_event(RawEvent::PostCreated(owner.clone(), new_post_id));
+      Self::deposit_event(RawEvent::PostCreated(spaced_account, new_post_id));
     }
 
     // TODO use CommentUpdate to pass data?
@@ -495,7 +497,7 @@ decl_module! {
       <NextCommentId<T>>::mutate(|n| { *n += T::CommentId::sa(1); });
       <PostById<T>>::insert(post_id, post);
 
-      Self::deposit_event(RawEvent::CommentCreated(owner.clone(), comment_id));
+      Self::deposit_event(RawEvent::CommentCreated(spaced_account, comment_id));
     }
 
     pub fn create_post_reaction(origin, on_behalf: Option<T::SpaceId>, post_id: T::PostId, kind: ReactionKind) {
@@ -532,7 +534,7 @@ decl_module! {
       <ReactionIdsByPostId<T>>::mutate(post_id, |ids| ids.push(reaction_id));
       <PostReactionIdByAccount<T>>::insert((spaced_account.clone(), post_id), reaction_id);
 
-      Self::deposit_event(RawEvent::PostReactionCreated(owner.clone(), post_id, reaction_id));
+      Self::deposit_event(RawEvent::PostReactionCreated(spaced_account, post_id, reaction_id));
     }
 
     pub fn create_comment_reaction(origin, on_behalf: Option<T::SpaceId>, comment_id: T::CommentId, kind: ReactionKind) {
@@ -568,7 +570,7 @@ decl_module! {
       <ReactionIdsByCommentId<T>>::mutate(comment_id, |ids| ids.push(reaction_id));
       <CommentReactionIdByAccount<T>>::insert((spaced_account.clone(), comment_id), reaction_id);
 
-      Self::deposit_event(RawEvent::CommentReactionCreated(owner.clone(), comment_id, reaction_id));
+      Self::deposit_event(RawEvent::CommentReactionCreated(spaced_account, comment_id, reaction_id));
     }
 
     pub fn update_space(origin, on_behalf: Option<T::SpaceId>, space_id: T::SpaceId, update: SpaceUpdate) {
@@ -643,7 +645,7 @@ decl_module! {
         space.updated = Some(Self::new_change(spaced_account.clone()));
         space.edit_history.push(new_history_record);
         <SpaceById<T>>::insert(space_id, space);
-        Self::deposit_event(RawEvent::SpaceUpdated(owner.clone(), space_id));
+        Self::deposit_event(RawEvent::SpaceUpdated(spaced_account, space_id));
       }
     }
     
@@ -708,7 +710,7 @@ decl_module! {
         post.edit_history.push(new_history_record);
         <PostById<T>>::insert(post_id, post);
 
-        Self::deposit_event(RawEvent::PostUpdated(owner.clone(), post_id));
+        Self::deposit_event(RawEvent::PostUpdated(spaced_account, post_id));
       }
     }
     
@@ -755,7 +757,7 @@ decl_module! {
         comment.edit_history.push(new_history_record);
         <CommentById<T>>::insert(comment_id, comment);
 
-        Self::deposit_event(RawEvent::CommentUpdated(owner.clone(), comment_id));
+        Self::deposit_event(RawEvent::CommentUpdated(spaced_account, comment_id));
       }
     }
 
@@ -799,7 +801,7 @@ decl_module! {
       <ReactionById<T>>::insert(reaction_id, reaction);
       <PostById<T>>::insert(post_id, post);
 
-      Self::deposit_event(RawEvent::PostReactionUpdated(owner.clone(), post_id, reaction_id));
+      Self::deposit_event(RawEvent::PostReactionUpdated(spaced_account, post_id, reaction_id));
     }
 
     pub fn update_comment_reaction(origin, on_behalf: Option<T::SpaceId>, comment_id: T::CommentId, reaction_id: T::ReactionId, new_kind: ReactionKind) {
@@ -842,7 +844,7 @@ decl_module! {
       <ReactionById<T>>::insert(reaction_id, reaction);
       <CommentById<T>>::insert(comment_id, comment);
 
-      Self::deposit_event(RawEvent::CommentReactionUpdated(owner.clone(), comment_id, reaction_id));
+      Self::deposit_event(RawEvent::CommentReactionUpdated(spaced_account, comment_id, reaction_id));
     }
 
     // TODO fn delete_space(origin, space_id: T::SpaceId) {
@@ -887,7 +889,7 @@ decl_module! {
       <ReactionIdsByPostId<T>>::mutate(post_id, |ids| Self::vec_remove_on(ids, reaction_id));
       <PostReactionIdByAccount<T>>::remove((spaced_account.clone(), post_id));
 
-      Self::deposit_event(RawEvent::PostReactionDeleted(owner.clone(), post_id, reaction_id));
+      Self::deposit_event(RawEvent::PostReactionDeleted(spaced_account, post_id, reaction_id));
     }
 
     pub fn delete_comment_reaction(origin, on_behalf: Option<T::SpaceId>, comment_id: T::CommentId, reaction_id: T::ReactionId) {
@@ -922,7 +924,7 @@ decl_module! {
       <ReactionById<T>>::remove(reaction_id);
       <CommentReactionIdByAccount<T>>::remove((spaced_account.clone(), comment_id));
 
-      Self::deposit_event(RawEvent::CommentReactionDeleted(owner.clone(), comment_id, reaction_id));
+      Self::deposit_event(RawEvent::CommentReactionDeleted(spaced_account, comment_id, reaction_id));
     }
 
     // TODO spend some tokens on: create/update a space/post/comment.
