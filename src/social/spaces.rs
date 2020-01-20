@@ -627,10 +627,7 @@ decl_module! {
 
       if let Some(handle) = update.handle {
         if handle != space.handle {
-          let handle_len = handle.len();
-          ensure!(handle_len >= Self::handle_min_len() as usize, MSG_SPACE_HANDLE_IS_TOO_SHORT);
-          ensure!(handle_len <= Self::handle_max_len() as usize, MSG_SPACE_HANDLE_IS_TOO_LONG);
-          ensure!(!<SpaceIdByHandle<T>>::exists(handle.clone()), MSG_SPACE_HANDLE_IS_NOT_UNIQUE);
+          Self::is_space_handle_valid(handle.clone())?;
 
           <SpaceIdByHandle<T>>::remove(space.handle.clone());
           <SpaceIdByHandle<T>>::insert(handle.clone(), space_id);
