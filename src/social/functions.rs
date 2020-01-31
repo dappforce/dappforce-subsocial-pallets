@@ -310,6 +310,7 @@ impl<T: Trait> Module<T> {
 
     <CommentSharesByAccount<T>>::insert((account.clone(), original_comment_id), shares_count); // TODO Maybe use mutate instead?
     <SharedPostIdsByOriginalCommentId<T>>::mutate(original_comment_id, |ids| ids.push(shared_post_id));
+    <CommentById<T>>::insert(original_comment_id, original_comment);
 
     Self::deposit_event(RawEvent::CommentShared(spaced_account, original_comment_id));
 

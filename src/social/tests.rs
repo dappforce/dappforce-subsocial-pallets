@@ -17,6 +17,9 @@ const SPACE2 : SpaceId = 2;
 fn space_handle() -> Vec<u8> {
   b"space_handle".to_vec()
 }
+fn space2_handle() -> Vec<u8> {
+  b"space2_handle".to_vec()
+}
 
 fn space_ipfs_hash() -> Option<Vec<u8>> {
   Some(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
@@ -55,13 +58,6 @@ fn comment_update(ipfs_hash: Option<Vec<u8>>, hidden: Option<bool>) -> CommentUp
     ipfs_hash,
     hidden
   }
-}
-
-fn alice_username() -> Vec<u8> {
-  b"Alice".to_vec()
-}
-fn bob_username() -> Vec<u8> {
-  b"Bob".to_vec()
 }
 
 fn reaction_upvote() -> ReactionKind {
@@ -184,7 +180,7 @@ fn _create_default_comment_reaction() -> dispatch::Result {
 fn _create_post_reaction(origin: Option<Origin>, on_behalf: Option<Option<SpaceId>>, post_id: Option<PostId>, kind: Option<ReactionKind>) -> dispatch::Result {
   Spaces::create_post_reaction(
     origin.unwrap_or(Origin::signed(ACCOUNT1)),
-    on_behalf.unwrap_or(Some(SPACE2)),
+    on_behalf.unwrap_or(Some(SPACE1)),
     post_id.unwrap_or(1),
     kind.unwrap_or(self::reaction_upvote())
   )
@@ -193,7 +189,7 @@ fn _create_post_reaction(origin: Option<Origin>, on_behalf: Option<Option<SpaceI
 fn _create_comment_reaction(origin: Option<Origin>, on_behalf: Option<Option<SpaceId>>, comment_id: Option<CommentId>, kind: Option<ReactionKind>) -> dispatch::Result {
   Spaces::create_comment_reaction(
     origin.unwrap_or(Origin::signed(ACCOUNT1)),
-    on_behalf.unwrap_or(Some(SPACE2)),
+    on_behalf.unwrap_or(Some(SPACE1)),
     comment_id.unwrap_or(1),
     kind.unwrap_or(self::reaction_upvote())
   )
@@ -566,7 +562,7 @@ fn update_post_should_fail_nothing_to_update() {
 fn update_post_should_fail_post_not_found() {
   with_externalities(&mut build_ext(), || {
     assert_ok!(_create_default_space()); // SpaceId 1
-    assert_ok!(_create_space(None, None, Some(b"space2_handle".to_vec()), None)); // SpaceId 2
+    assert_ok!(_create_space(None, None, Some(self::space2_handle()), None)); // SpaceId 2
     assert_ok!(_create_default_post()); // PostId 1
   
     // Try to catch an error updating a post with wrong post ID
@@ -586,11 +582,11 @@ fn update_post_should_fail_post_not_found() {
 fn update_post_should_fail_not_an_owner() {
   with_externalities(&mut build_ext(), || {
     assert_ok!(_create_default_space()); // SpaceId 1
-    assert_ok!(_create_space(None, None, Some(b"space2_handle".to_vec()), None)); // SpaceId 2
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), None, Some(self::space2_handle()), None)); // SpaceId 2
     assert_ok!(_create_default_post()); // PostId 1
   
     // Try to catch an error updating a post with different account
-    assert_noop!(_update_post(Some(Origin::signed(ACCOUNT2)), None, None,
+    assert_noop!(_update_post(Some(Origin::signed(ACCOUNT2)), Some(Some(SPACE2)), None,
       Some(
         self::post_update(
           Some(2), 
@@ -731,6 +727,8 @@ fn update_comment_should_work() {
 #[test]
 fn update_comment_should_fail_comment_not_found() {
   with_externalities(&mut build_ext(), || {
+    assert_ok!(_create_default_space()); // SpaceId 1
+
     // Try to catch an error updating a comment with wrong CommentId
     assert_noop!(_update_comment(
       None,
@@ -746,13 +744,14 @@ fn update_comment_should_fail_comment_not_found() {
 fn update_comment_should_fail_not_an_owner() {
   with_externalities(&mut build_ext(), || {
     assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), None, Some(self::space2_handle()), None)); // SpaceId 2
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // CommentId 1
 
     // Try to catch an error updating a comment with wrong Account
     assert_noop!(_update_comment(
       Some(Origin::signed(2)),
-      None,
+      Some(Some(SPACE2)),
       None,
       Some(self::comment_update(Some(self::subcomment_ipfs_hash()), None))
     ),
@@ -787,7 +786,7 @@ fn create_post_reaction_should_work_upvote() {
     assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
 
-    assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, None, None)); // ReactionId 1 by ACCOUNT2
+    assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), Some(None), None, None)); // ReactionId 1 by ACCOUNT2
 
     // Check storages
     assert_eq!(Spaces::reaction_ids_by_post_id(1), vec![1]);
@@ -811,7 +810,7 @@ fn create_post_reaction_should_work_downvote() {
     assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
 
-    assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, None, Some(self::reaction_downvote()))); // ReactionId 1 by ACCOUNT2
+    assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), Some(None), None, Some(self::reaction_downvote()))); // ReactionId 1 by ACCOUNT2
 
     // Check storages
     assert_eq!(Spaces::reaction_ids_by_post_id(1), vec![1]);
@@ -834,7 +833,7 @@ fn create_post_reaction_should_fail_already_reacted() {
   with_externalities(&mut build_ext(), || {
     assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
-    assert_ok!(_create_default_post_reaction()); // ReactionId1 
+    assert_ok!(_create_default_post_reaction()); // ReactionId 1
 
     // Try to catch an error creating reaction by the same account
     assert_noop!(_create_default_post_reaction(), MSG_ACCOUNT_ALREADY_REACTED_TO_POST);
@@ -844,6 +843,7 @@ fn create_post_reaction_should_fail_already_reacted() {
 #[test]
 fn create_post_reaction_should_fail_post_not_found() {
   with_externalities(&mut build_ext(), || {
+    assert_ok!(_create_default_space());
     // Try to catch an error creating reaction by the same account
     assert_noop!(_create_default_post_reaction(), MSG_POST_NOT_FOUND);
   });
@@ -855,7 +855,7 @@ fn create_comment_reaction_should_work_upvote() {
     assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // CommentId 1
-    assert_ok!(_create_comment_reaction(Some(Origin::signed(ACCOUNT2)), None, None, None)); // ReactionId 1 by ACCOUNT2
+    assert_ok!(_create_comment_reaction(Some(Origin::signed(ACCOUNT2)), Some(None), None, None)); // ReactionId 1 by ACCOUNT2
 
     // Check storages
     assert_eq!(Spaces::reaction_ids_by_comment_id(1), vec![1]);
@@ -879,7 +879,7 @@ fn create_comment_reaction_should_work_downvote() {
     assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // CommentId 1
-    assert_ok!(_create_comment_reaction(Some(Origin::signed(ACCOUNT2)), None, None, Some(self::reaction_downvote()))); // ReactionId 1 by ACCOUNT2
+    assert_ok!(_create_comment_reaction(Some(Origin::signed(ACCOUNT2)), Some(None), None, Some(self::reaction_downvote()))); // ReactionId 1 by ACCOUNT2
 
     // Check storages
     assert_eq!(Spaces::reaction_ids_by_comment_id(1), vec![1]);
@@ -913,6 +913,8 @@ fn create_comment_reaction_should_fail_already_reacted() {
 #[test]
 fn create_comment_reaction_should_fail_comment_not_found() {
   with_externalities(&mut build_ext(), || {
+    assert_ok!(_create_default_space());
+
     // Try to catch an error creating reaction by the same account
     assert_noop!(_create_default_comment_reaction(), MSG_COMMENT_NOT_FOUND);
   });
@@ -924,11 +926,11 @@ fn create_comment_reaction_should_fail_comment_not_found() {
 fn share_post_should_work() {
   with_externalities(&mut build_ext(), || {
     assert_ok!(_create_default_space()); // SpaceId 1
-    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), None, Some(b"space2_handle".to_vec()), None)); // SpaceId 2 by ACCOUNT2
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), None, Some(self::space2_handle()), None)); // SpaceId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
-      None,
+      Some(Some(SPACE2)),
       Some(2),
       Some(vec![]),
       Some(self::extension_shared_post(1))
@@ -989,7 +991,7 @@ fn share_post_should_work_share_own_post() {
 fn share_post_should_fail_original_post_not_found() {
   with_externalities(&mut build_ext(), || {
     assert_ok!(_create_default_space()); // SpaceId 1
-    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), None, Some(b"space2_handle".to_vec()), None)); // SpaceId 2 by ACCOUNT2
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), None, Some(self::space2_handle()), None)); // SpaceId 2 by ACCOUNT2
     // Skipped creating PostId 1
     assert_noop!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
@@ -1006,11 +1008,11 @@ fn share_post_should_fail_original_post_not_found() {
 fn share_post_should_fail_share_shared_post() {
   with_externalities(&mut build_ext(), || {
     assert_ok!(_create_default_space()); // SpaceId 1
-    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), None, Some(b"space2_handle".to_vec()), None)); // SpaceId 2 by ACCOUNT2
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), None, Some(self::space2_handle()), None)); // SpaceId 2 by ACCOUNT2
     assert_ok!(_create_default_post());
     assert_ok!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
-      None,
+      Some(Some(SPACE2)),
       Some(2),
       Some(vec![]),
       Some(self::extension_shared_post(1)))
@@ -1032,12 +1034,12 @@ fn share_post_should_fail_share_shared_post() {
 fn share_comment_should_work() {
   with_externalities(&mut build_ext(), || {
     assert_ok!(_create_default_space()); // SpaceId 1
-    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), None, Some(b"space2_handle".to_vec()), None)); // SpaceId 2 by ACCOUNT2
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), None, Some(self::space2_handle()), None)); // SpaceId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // CommentId 1
     assert_ok!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
-      None,
+      Some(Some(SPACE2)),
       Some(2),
       Some(vec![]),
       Some(self::extension_shared_comment(1))
@@ -1067,7 +1069,7 @@ fn share_comment_should_work() {
 fn share_comment_should_fail_original_comment_not_found() {
   with_externalities(&mut build_ext(), || {
     assert_ok!(_create_default_space()); // SpaceId 1
-    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), None, Some(b"space2_handle".to_vec()), None)); // SpaceId 2 by ACCOUNT2
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), None, Some(self::space2_handle()), None)); // SpaceId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     // Skipped creating CommentId 1
     assert_noop!(_create_post(
@@ -1087,6 +1089,7 @@ fn share_comment_should_fail_original_comment_not_found() {
 fn follow_space_should_work() {
   with_externalities(&mut build_ext(), || {
     assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), Some(None), Some(self::space2_handle()), None)); // SpaceId 2
 
     assert_ok!(_default_follow_space()); // Follow SpaceId 1 by ACCOUNT2
 
@@ -1107,6 +1110,8 @@ fn follow_space_should_fail_space_not_found() {
 fn follow_space_should_fail_already_following() {
   with_externalities(&mut build_ext(), || {
     assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), Some(None), Some(self::space2_handle()), None)); // SpaceId 2
+
     assert_ok!(_default_follow_space()); // Follow SpaceId 1 by ACCOUNT2
 
     assert_noop!(_default_follow_space(), MSG_ACCOUNT_IS_FOLLOWING_SPACE);
@@ -1117,6 +1122,7 @@ fn follow_space_should_fail_already_following() {
 fn unfollow_space_should_work() {
   with_externalities(&mut build_ext(), || {
     assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), Some(None), Some(self::space2_handle()), None)); // SpaceId 2
 
     assert_ok!(_default_follow_space()); // Follow SpaceId 1 by ACCOUNT2
     assert_ok!(_default_unfollow_space());
@@ -1137,6 +1143,7 @@ fn unfollow_space_should_fail_space_not_found() {
 fn unfollow_space_should_fail_already_following() {
   with_externalities(&mut build_ext(), || {
     assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), None, Some(self::space2_handle()), None)); // SpaceId 2
 
     assert_noop!(_default_unfollow_space(), MSG_ACCOUNT_IS_NOT_FOLLOWING_SPACE);
   });
