@@ -9,3 +9,7 @@ To learn more about Subsocial, please visit [Subsocial Network](http://subsocial
 ## Video demo
 
 [![Subsocial demo #4, 2019-11-28](http://i3.ytimg.com/vi/pFGvlKpJdss/maxresdefault.jpg)](https://www.youtube.com/watch?v=pFGvlKpJdss)
+
+## License
+
+Subsocial is [GPL 3.0](./LICENSE) licensed.
