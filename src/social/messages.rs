@@ -9,6 +9,7 @@ pub const MSG_POST_NOT_FOUND: &str = "Post was not found by id";
 pub const MSG_NOTHING_TO_UPDATE_IN_POST: &str = "Nothing to update in a post";
 pub const MSG_ONLY_POST_OWNER_CAN_UPDATE_POST: &str = "Only post owner can update their post";
 pub const MSG_OVERFLOW_ADDING_POST_ON_BLOG: &str = "Overflow adding post on blog";
+pub const MSG_UNDERFLOW_REMOVING_POST_FROM_BLOG: &str = "Underflow caused by removing post from blog";
 
 pub const MSG_COMMENT_NOT_FOUND: &str = "Comment was not found by id";
 pub const MSG_UNKNOWN_PARENT_COMMENT: &str = "Unknown parent comment id";
