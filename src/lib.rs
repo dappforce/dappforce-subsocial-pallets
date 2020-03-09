@@ -233,8 +233,10 @@ decl_error! {
     NoUpdatesInPost,
     /// Only post author can manage their blog
     NotAPostAuthor,
-    /// Overflow caused adding post on blog
+    /// Overflow caused by adding post on blog
     OverflowAddingPostOnBlog,
+    /// Underflow caused by removing post from blog
+    UnderflowRemovingPostFromBlog,
 
     /// Comment was not found by id
     CommentNotFound,
@@ -773,13 +775,20 @@ decl_module! {
       // Move this post to another blog:
       if let Some(blog_id) = update.blog_id {
         if blog_id != post.blog_id {
-          Self::ensure_blog_exists(blog_id)?;
+          // Self::ensure_blog_exists(blog_id)?;
+
+          let mut old_blog = Self::blog_by_id(post.blog_id).ok_or(Error::<T>::BlogNotFound)?;
+          let mut new_blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
+          old_blog.posts_count = old_blog.posts_count.checked_sub(1).ok_or(Error::<T>::UnderflowRemovingPostFromBlog)?;
+          new_blog.posts_count = old_blog.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnBlog)?;
 
           // Remove post_id from its old blog:
           PostIdsByBlogId::mutate(post.blog_id, |post_ids| Self::vec_remove_on(post_ids, post_id));
+          <BlogById<T>>::insert(post.blog_id, old_blog);
 
           // Add post_id to its new blog:
           PostIdsByBlogId::mutate(blog_id.clone(), |ids| ids.push(post_id));
+          <BlogById<T>>::insert(blog_id, new_blog);
           new_history_record.old_data.blog_id = Some(post.blog_id);
           post.blog_id = blog_id;
           fields_updated += 1;
