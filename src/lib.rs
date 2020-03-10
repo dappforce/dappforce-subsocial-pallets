@@ -775,7 +775,6 @@ decl_module! {
       // Move this post to another blog:
       if let Some(blog_id) = update.blog_id {
         if blog_id != post.blog_id {
-          // Self::ensure_blog_exists(blog_id)?;
 
           let mut old_blog = Self::blog_by_id(post.blog_id).ok_or(Error::<T>::BlogNotFound)?;
           let mut new_blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
