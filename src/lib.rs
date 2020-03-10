@@ -235,7 +235,7 @@ decl_error! {
     NotAPostAuthor,
     /// Overflow caused by adding post on blog
     OverflowAddingPostOnBlog,
-    /// Underflow caused by removing post from blog
+    /// Underflow caused by removing a post from its current blog
     UnderflowRemovingPostFromBlog,
 
     /// Comment was not found by id
