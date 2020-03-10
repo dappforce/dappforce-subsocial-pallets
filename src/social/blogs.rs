@@ -816,9 +816,9 @@ decl_module! {
         if blog_id != post.blog_id {
           // Self::ensure_blog_exists(blog_id)?;
 
-          let mut old_blog = Self::blog_by_id(post.blog_id).ok_or(Error::<T>::BlogNotFound)?;
-          let mut new_blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
-          old_blog.posts_count = old_blog.posts_count.checked_sub(1).ok_or(MSG_OVERFLOW_REMOVING_POST_FROM_BLOG)?;
+          let mut old_blog = Self::blog_by_id(post.blog_id).ok_or(MSG_BLOG_NOT_FOUND)?;
+          let mut new_blog = Self::blog_by_id(blog_id).ok_or(MSG_BLOG_NOT_FOUND)?;
+          old_blog.posts_count = old_blog.posts_count.checked_sub(1).ok_or(MSG_UNDERFLOW_REMOVING_POST_FROM_BLOG)?;
           new_blog.posts_count = old_blog.posts_count.checked_add(1).ok_or(MSG_OVERFLOW_ADDING_POST_ON_BLOG)?;
           
           // Remove post_id from its old blog:
