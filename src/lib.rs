@@ -233,7 +233,7 @@ decl_error! {
     NoUpdatesInPost,
     /// Only post author can manage their blog
     NotAPostAuthor,
-    /// Overflow caused by adding post on blog
+    /// Overflow caused by adding a post to a blog
     OverflowAddingPostOnBlog,
     /// Underflow caused by removing a post from its current blog
     UnderflowRemovingPostFromBlog,
