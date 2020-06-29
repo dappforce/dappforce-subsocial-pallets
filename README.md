@@ -1,6 +1,6 @@
 # Subsocial Pallets for Substrate v1 by [DappForce](https://github.com/dappforce)
 
-⚠️ Note that this version of Subsocial is implemented on top of [Substrate v1 (April 12, 2019)](https://github.com/paritytech/substrate/commit/6dfc3e8b057bb00322136251a0f10305fbb1ad8f). After Subsocial migrated to Substrate v2, its development moved to another repo: [dappforce-subsocial-node](https://github.com/dappforce/dappforce-subsocial-node)
+⚠️ Note that Subsocial development has moved to a new repo: [dappforce-subsocial-node](https://github.com/dappforce/dappforce-subsocial-node) and now it's based on Substrate v2. That's why we archieved this current repo where Subsocial is implemented on top of [Substrate v1 (April 12, 2019)](https://github.com/paritytech/substrate/commit/6dfc3e8b057bb00322136251a0f10305fbb1ad8f).
 
 ## What is Subsocial?
 
