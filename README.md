@@ -1,4 +1,8 @@
-# Subsocial Pallets by [DappForce](https://github.com/dappforce)
+# Subsocial Pallets for Substrate v1 by [DappForce](https://github.com/dappforce)
+
+Note that this version of Subsocial is implemented on top of Substrate v1. After Subsocial migrated to Substrate v2, its development moved to another repo: [dappforce-subsocial-node](https://github.com/dappforce/dappforce-subsocial-node)
+
+## What is Subsocial?
 
 Subsocial is a set of Substrate pallets with web UI that allows anyone to launch their own decentralized censorship-resistant social network aka community. Every community can be a separate Substrate chain and connect with other communities via a Polkadot-based relay chain.
 
